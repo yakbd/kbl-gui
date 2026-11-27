@@ -1,13 +1,13 @@
 # The editor's Windows payload for one architecture, the contents of the install folder YAKBD\Editor\: yakbd-gui.exe,
-# qt.conf, the licence texts and the CLI's LICENSE and NOTICE, with Qt, its plugins and QML and the Visual C++ runtime
-# in the subfolder qt\ (a private side-by-side assembly; the build needs -DYAKBD_QT_SUBFOLDER=ON). The editor finds the
-# CLI at ..\CLI\yakbd.exe. Run in a Visual Studio developer shell of the target architecture (for VCToolsRedistDir).
-#   pwsh packaging/windows/package.ps1 -Build build -Arch x64|arm64 -CliDocs <folder> -Out dist
+# qt.conf and the licence texts, with Qt, its plugins and QML and the Visual C++ runtime in the subfolder qt\ (a private
+# side-by-side assembly; the build needs -DYAKBD_QT_SUBFOLDER=ON). The editor finds the CLI at ..\CLI\yakbd.exe, which
+# the installer puts there with the CLI's own LICENSE and NOTICE. Run in a Visual Studio developer shell of the target
+# architecture (for VCToolsRedistDir).
+#   pwsh packaging/windows/package.ps1 -Build build -Arch x64|arm64 -Out dist
 # Writes <Out>\payload-<Arch>\.
 param(
   [Parameter(Mandatory)] [string] $Build,
   [Parameter(Mandatory)] [ValidateSet("x64", "arm64")] [string] $Arch,
-  [Parameter(Mandatory)] [string] $CliDocs,  # folder with yakbd-cli-LICENSE and yakbd-cli-NOTICE
   [Parameter(Mandatory)] [string] $Out,
   [string] $VcRedist = $env:VCToolsRedistDir
 )
@@ -86,17 +86,11 @@ $files
 Set-Content -Encoding ascii (Join-Path $stage "qt.conf") "[Paths]`r`nPrefix = qt`r`n"
 Write-Host "qt\: $((Get-ChildItem (Join-Path $qt '*.dll')).Count) DLLs in the private assembly"
 
-# 3. Licences: ours, Qt's (LGPL) and the other texts NOTICE names, and the CLI's own LICENSE and NOTICE (they go next
-#    to yakbd.exe when the setup installs the payload).
+# 3. Licences: ours, Qt's (LGPL) and the other texts NOTICE names.
 $docs = Join-Path $stage "licenses"
 New-Item -ItemType Directory -Force -Path $docs | Out-Null
 Copy-Item LICENSE, NOTICE $stage
 Copy-Item third_party/licenses/* $docs
-foreach ($doc in "LICENSE", "NOTICE") {
-  $f = Join-Path $CliDocs "yakbd-cli-$doc"
-  if (-not (Test-Path $f)) { throw "missing $f (the CLI's $doc must ship with it)" }
-  Copy-Item $f $stage
-}
 foreach ($bad in "yakbd.exe", "setup.exe") {
   if (Test-Path (Join-Path $stage $bad)) { throw "the payload must not contain $bad" }
 }

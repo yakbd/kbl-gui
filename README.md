@@ -40,16 +40,19 @@ needs yakbd 0.1 or a later 0.x release.
 
 ## Install
 
-Download from the [releases](https://github.com/yakbd/yakbd-gui/releases) of this repository (made by the `Packages`
+Download from the [latest release](https://github.com/yakbd/yakbd-gui/releases/latest) of this repository (made by the `Packages`
 workflow; each file has a `SHA256SUMS` line and a build provenance attestation: `gh attestation verify <file> -R
 yakbd/yakbd-gui`).
 
-- **Windows**: one `yakbd-setup.exe` for every Windows PC. It is the yakbd tool's own installer with the editor
-  added: it installs `yakbd.exe` for the PC's architecture (x86, x64 or ARM64) and, on x64 and ARM64, the editor
-  next to it, in `C:\Program Files\YAKBD\yakbd\`, puts that folder on the PATH, and replaces a CLI-only install in
-  place (and the other way round). Qt 6 has no 32-bit Windows build, so on x86 it installs the CLI only. It takes
-  `msiexec`-style switches (`/quiet /norestart`). Start the editor as `C:\Program Files\YAKBD\yakbd\yakbd-gui.exe`
-  (a Start-menu shortcut comes with yakbd-cli 0.1.0-preview.3).
+- **Windows**: `yakbd-gui-setup.exe`, one installer for every Windows PC, with the components **YAKBD Editor** (x64
+  and ARM64) and **YAKBD CLI** (x86, x64, ARM64; the editor needs it). It installs into `C:\Program Files\YAKBD\`
+  (`Editor\` and `CLI\`), adds the Start-menu shortcut **YAKBD Editor**, and offers to put the CLI on the PATH
+  (off by default; the CLI's own `yakbd-cli-setup.exe` turns it on). On 32-bit Windows the editor is greyed out
+  (Qt 6 has no 32-bit Windows build) and the CLI alone can be installed. Both installers are one product, "YAKBD"
+  in Installed apps: each one sees, upgrades or keeps what the other installed. Uninstalling removes both; the
+  editor can also be removed alone, optionally with your settings. It takes `msiexec`-style switches
+  (`/quiet /norestart`, `ADDLOCAL`, `REMOVE`, `ADDTOPATH`, `REMOVEUSERDATA`: yakbd-cli's
+  [docs/installer-cli.md](https://github.com/yakbd/yakbd-cli/blob/main/docs/installer-cli.md) §12).
 - **macOS** (Apple silicon and Intel, macOS 14.4 or later): `YAKBD-Editor-<version>.dmg` with `YAKBD Editor.app`, and `yakbd` inside the app.
   The app is **not signed or notarized**, so macOS blocks it the first time: open it once, then go to
   **System Settings › Privacy & Security**, find the message about YAKBD and click **Open Anyway** (within about an
@@ -89,23 +92,24 @@ and GTK runtime libraries, Xvfb for the screenshot test) and installs a pinned C
     # in a "Developer PowerShell for VS" of the same architecture:
     cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=C:/qt -DYAKBD_CLI=C:/path/to/yakbd.exe -DYAKBD_QT_SUBFOLDER=ON
     cmake --build build
-    pwsh packaging/windows/package.ps1 -Build build -Arch x64 -CliDocs <folder with yakbd-cli-LICENSE and -NOTICE> -Out dist
+    pwsh packaging/windows/package.ps1 -Build build -Arch x64 -Out dist
 
 That gives `dist\payload-x64\`, the installed `YAKBD\Editor\` folder: `yakbd-gui.exe`, `qt.conf` and the licence
 texts, with Qt and the Visual C++ runtime in `qt\`, a private side-by-side assembly the exe's manifest names (so
 Windows finds it without PATH; `YAKBD_QT_SUBFOLDER=ON` adds that manifest, and such an exe starts only with `qt\`
 beside it). The editor finds the CLI at `..\CLI\yakbd.exe`, beside itself, or on PATH.
-`packaging/windows/make-setup.sh` (Linux or macOS, with Go) turns the x64 and ARM64 payloads into
-`yakbd-setup.exe` with a checkout of yakbd-cli at the release tag, whose `tools/toolsetup` is the installer
-machinery. Use the Go version named in the checkout's `installer/stub-386.version`: only then is every `yakbd.exe` it
-carries byte-identical to the release's, which the script checks against the release's zips.
+`packaging/cli-release.sh <tag> cli` (Linux or macOS, with gh and Go) fetches and checks a yakbd-cli release and
+rebuilds its Windows `yakbd.exe` from the tag; `packaging/windows/make-setup.sh` then turns the x64 and ARM64
+payloads into `yakbd-gui-setup.exe` with the tag's own `tools/toolsetup` (`-editor`, `-editor-json`). Use the Go
+version named in the tag's `installer/stub-386.version`: only then is every `yakbd.exe` byte-identical to the one
+the release's `yakbd-cli-setup.exe` carries, which both scripts check.
 
 **macOS** (Xcode command-line tools):
 
     cmake -DPLATFORM=clang_64 -DDEST=$HOME/qt-6.12.1 -P tools/getqt.cmake
     cmake -S . -B build -DCMAKE_PREFIX_PATH=$HOME/qt-6.12.1 -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DYAKBD_CLI=/path/to/yakbd
     cmake --build build --parallel
-    sh packaging/macos/package.sh build yakbd-darwin-amd64 yakbd-darwin-arm64 dist
+    sh packaging/macos/package.sh build cli/macos/yakbd dist cli     # the release's universal yakbd (cli-release.sh)
 
 Run `open "build/YAKBD Editor.app"`; the packaged app holds the CLI next to the editor's executable.
 The tests run the released CLI: on Linux x86-64 the configure step fetches the release pinned in

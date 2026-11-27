@@ -7,14 +7,17 @@ edits keys, dead keys, metadata and the Windows build choices, and saves only wh
 
 ## Windows
 
-- **`yakbd-setup.exe`**, one installer for every Windows PC: the yakbd tool's own installer with the editor added.
-  It installs `yakbd.exe` for the PC's architecture and, on **x64 and ARM64**, the editor next to it, in
-  `C:\Program Files\YAKBD\yakbd\`, and puts that folder on the PATH. Qt 6 has no 32-bit Windows build, so on **x86**
-  (32-bit) Windows it installs the CLI only.
-- Start the editor from the Start menu (**YAKBD Editor**) or as `C:\Program Files\YAKBD\yakbd\yakbd-gui.exe`.
-- It is the same product as the CLI-only `yakbd-setup.exe`: either one replaces the other in place. **Installed
-  apps** lists it as "yakbd" with the **CLI's version (@CLI_VERSION@)**, not the editor's. Unattended:
-  `yakbd-setup.exe /quiet /norestart`; uninstall from Installed apps or with `yakbd-setup.exe /x /quiet`.
+- **`yakbd-gui-setup.exe`**, one installer for every Windows PC, with the components **YAKBD Editor** (x64 and
+  ARM64) and **YAKBD CLI** (yakbd @CLI_VERSION@ for x86, x64 and ARM64; the editor needs it), both ticked. It installs
+  into `C:\Program Files\YAKBD\` (`Editor\` and `CLI\`) and adds the Start-menu shortcut **YAKBD Editor**. "Add
+  YAKBD CLI to PATH" is offered, off by default (kept on when the PATH entry is there already). On **32-bit** Windows
+  the editor is greyed out (Qt 6 has no 32-bit Windows build) and the CLI can be installed alone.
+- One product with the CLI's `yakbd-cli-setup.exe`: **Installed apps** shows one entry, "YAKBD", with the editor's
+  version (@VERSION@). Either installer sees what is installed, upgrades it and never downgrades. Uninstall from
+  Installed apps: both components are ticked; untick the CLI to remove only the editor; "Remove my settings" is
+  offered, unticked. Earlier installs (`C:\Program Files\YAKBD\yakbd\`) are taken over.
+- Unattended: `yakbd-gui-setup.exe /quiet /norestart` (the wizard's defaults), with `ADDLOCAL=CLI`, `ADDTOPATH=1`,
+  `REMOVE=Editor`, `REMOVEUSERDATA=1` as needed; uninstall with `yakbd-gui-setup.exe /x /quiet`.
 - Not signed: Windows may warn (SmartScreen, "Unknown publisher"). Check the file as below first.
 
 ## macOS (Apple silicon and Intel, macOS 14.4 or later)

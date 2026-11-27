@@ -1,8 +1,9 @@
 name: Packages
 
 # Builds the editor's packages with a tagged yakbd-cli release: the Linux AppImage (and its runtime's sources), one
-# Windows yakbd-setup.exe (the CLI's own installer for x86/x64/arm64 with the editor for x64 and arm64, built natively
-# with MSVC on x64 and arm64 runners and installed and removed again on both), the macOS .dmg (universal, unsigned).
+# Windows yakbd-gui-setup.exe (the components YAKBD Editor for x64 and arm64, built natively with MSVC on x64 and
+# arm64 runners, and YAKBD CLI for x86/x64/arm64; installed, changed and removed again on both), the macOS .dmg
+# (universal, unsigned).
 # By default the latest tagged CLI release, verified by SHA256SUMS and its build provenance attestation.
 # Windows and macOS jobs are manual to save CI minutes (they are slow): run it when a check or a release needs it.
 # The packages are workflow artifacts. With a version, a last job collects them into a DRAFT release (tag v<version>,
@@ -19,6 +20,10 @@ on:
         description: "yakbd-cli release tag (empty: the latest release)"
         type: string
         default: ""
+      cli_source_only:
+        description: "Take the CLI from the tag's source only (a draft CLI release; Windows packages only, no release)"
+        type: boolean
+        default: false
       version:
         description: "Release version: 0.1.0-preview.N or 0.1.0-rehearsal.N (empty: packages only, no release)"
         type: string
@@ -41,6 +46,7 @@ jobs:
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
     steps:
+      - uses: actions/checkout@v4
       - name: Tag
         id: tag
         env:
@@ -48,6 +54,7 @@ jobs:
           VERSION: ${{ inputs.version }}
           PLATFORMS: ${{ inputs.platforms }}
           WANT: ${{ inputs.cli }}
+          SOURCE_ONLY: ${{ inputs.cli_source_only }}
         run: |
           if [ -n "$VERSION" ]; then
             echo "$VERSION" | grep -Eqx '0\.1\.0-(preview\.[0-9]+|rehearsal\.[0-9]+)' || { echo "::error::version $VERSION is not accepted"; exit 1; }
@@ -55,27 +62,32 @@ jobs:
             [ -n "$WANT" ] || { echo "::error::a release names its yakbd-cli tag explicitly (input cli)"; exit 1; }
             if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v$VERSION" >/dev/null 2>&1; then echo "::error::tag v$VERSION exists"; exit 1; fi
           fi
+          if [ "$SOURCE_ONLY" = true ]; then
+            [ -z "$VERSION" ] || { echo "::error::a release takes the CLI from its published release, not from source"; exit 1; }
+            [ "$PLATFORMS" = windows ] || { echo "::error::cli_source_only builds the Windows packages only"; exit 1; }
+            [ -n "$WANT" ] || { echo "::error::cli_source_only needs the tag (input cli)"; exit 1; }
+          fi
           tag="$WANT"
           if [ -z "$tag" ]; then tag=$(gh release view -R yakbd/yakbd-cli --json tagName -q .tagName); fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "yakbd-cli $tag" >> "$GITHUB_STEP_SUMMARY"
-      - name: Download and verify
+      - name: Go version of the CLI release (its Windows builds are reproducible only with that exact Go)
+        id: gover
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: echo "go=$(curl -fsSL "https://raw.githubusercontent.com/yakbd/yakbd-cli/$TAG/installer/stub-386.version" | sed 's/^go//' | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ steps.gover.outputs.go }}
+          cache: false
+      - name: Download, verify, rebuild the Windows yakbd.exe and compare
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          mkdir cli && cd cli
-          v=${TAG#v}
-          gh release download "$TAG" -R yakbd/yakbd-cli -p SHA256SUMS \
-            -p "yakbd-$v-linux-amd64" -p "yakbd-$v-darwin-amd64" -p "yakbd-$v-darwin-arm64" \
-            -p "yakbd-$v-windows-x86.zip" -p "yakbd-$v-windows-x64.zip" -p "yakbd-$v-windows-arm64.zip"
-          sha256sum -c --ignore-missing SHA256SUMS
-          [ "$(sha256sum -c --ignore-missing SHA256SUMS | grep -c ': OK$')" = 6 ]
-          for f in yakbd-$v-*; do gh attestation verify "$f" -R yakbd/yakbd-cli; done
-          # The CLI's LICENSE and NOTICE from its source at the tag: every package carries them next to the CLI.
-          for doc in LICENSE NOTICE; do
-            curl -fsSL -o "yakbd-cli-$doc" "https://raw.githubusercontent.com/yakbd/yakbd-cli/$TAG/$doc"
-          done
+          sh packaging/cli-release.sh "$TAG" cli ${{ inputs.cli_source_only && '--source-only' || '' }}
+          rm -rf cli/src
+          cat cli/exe-sha256.txt
       - uses: actions/upload-artifact@v4
         with:
           name: cli
@@ -107,12 +119,12 @@ jobs:
           LANG: C.UTF-8
           TAG: ${{ needs.cli.outputs.tag }}
         run: |
-          cli=$PWD/cli/yakbd-${TAG#v}-linux-amd64
+          cli=$PWD/cli/linux-amd64/yakbd
           chmod +x "$cli"
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/qt -DYAKBD_CLI="$cli" -DYAKBD_GUI_VERSION_FULL="$FULL"
           cmake --build build
           ctest --test-dir build --output-on-failure --timeout 300
-          sh packaging/linux/package.sh build "$cli" dist
+          sh packaging/linux/package.sh build "$cli" dist cli
           # The package reports the release version.
           (cd /tmp && "$OLDPWD/dist/YAKBD-Editor-$FULL-x86_64.AppImage" --appimage-extract >/dev/null)
           /tmp/squashfs-root/AppRun --self-test tests/data/minimal-qwerty.kbl.json > /tmp/st.txt
@@ -162,8 +174,7 @@ jobs:
           $host_arch = if ("${{ matrix.arch }}" -eq "arm64") { "arm64" } else { "amd64" }
           Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments "-arch=$host_arch -host_arch=$host_arch"
           $v = $env:TAG.TrimStart("v")
-          Expand-Archive "cli/yakbd-$v-windows-${{ matrix.arch }}.zip" cli/win
-          $cli = (Get-ChildItem -Recurse cli/win -Filter yakbd.exe | Select-Object -First 1).FullName
+          $cli = (Resolve-Path "cli/windows-${{ matrix.arch }}/yakbd.exe").Path
           "CLI=$cli" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=C:/qt -DYAKBD_CLI="$cli" -DYAKBD_GUI_VERSION_FULL="$env:FULL" -DYAKBD_QT_SUBFOLDER=ON
           if ($LASTEXITCODE -ne 0) { throw "configure failed" }
@@ -173,7 +184,7 @@ jobs:
           ctest --test-dir build --output-on-failure --timeout 300
           # A test failure fails the job at the end, after the payload and its own checks (they show more).
           "TESTS_EXIT=$LASTEXITCODE" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
-          pwsh packaging/windows/package.ps1 -Build build -Arch ${{ matrix.arch }} -CliDocs cli -Out dist
+          pwsh packaging/windows/package.ps1 -Build build -Arch ${{ matrix.arch }} -Out dist
           if ($LASTEXITCODE -ne 0) { throw "payload failed" }
       # Signing (later, SignPath): sign dist/payload-*/yakbd-gui.exe here, before the setup is made.
       - name: Install layout without PATH; self-test and screenshots (FluentWinUI3, light and dark)
@@ -239,7 +250,7 @@ jobs:
           pattern: payload-*
           path: payloads
       - name: CLI source at the tag (its installer machinery)
-        run: git -c core.autocrlf=false clone --depth 1 --branch "${{ needs.cli.outputs.tag }}" https://github.com/yakbd/yakbd-cli cli-src
+        run: git -c core.autocrlf=false -c advice.detachedHead=false clone -q --depth 1 --branch "${{ needs.cli.outputs.tag }}" https://github.com/yakbd/yakbd-cli cli-src
       - name: Go version of the CLI release (its installer build is reproducible only with that exact Go)
         id: gover
         run: echo "go=$(sed 's/^go//' cli-src/installer/stub-386.version | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
@@ -247,15 +258,15 @@ jobs:
         with:
           go-version: ${{ steps.gover.outputs.go }}
           cache: false
-      - name: yakbd-setup.exe (CLI for x86, x64, arm64; the editor for x64 and arm64)
+      - name: yakbd-gui-setup.exe (the editor for x64 and arm64; the CLI for x86, x64, arm64)
         run: |
           mkdir dist
-          sh packaging/windows/make-setup.sh cli-src payloads/payload-x64 payloads/payload-arm64 cli dist/yakbd-setup.exe
-      # Signing (later, SignPath): sign dist/yakbd-setup.exe here.
+          sh packaging/windows/make-setup.sh cli-src payloads/payload-x64 payloads/payload-arm64 cli/exe-sha256.txt "$FULL" dist/yakbd-gui-setup.exe
+      # Signing (later, SignPath): sign dist/yakbd-gui-setup.exe here.
       - uses: actions/upload-artifact@v4
         with:
           name: packages-windows
-          path: dist/yakbd-setup.exe
+          path: dist/yakbd-gui-setup.exe
           retention-days: 5
 
   windows-setup-test:
@@ -278,26 +289,64 @@ jobs:
         with:
           name: packages-windows
           path: setup
-      - name: Install, use, uninstall
+      - name: Install (defaults), use, remove the editor, uninstall
         run: |
-          $dir = Join-Path $env:ProgramW6432 "YAKBD\yakbd"
-          $p = Start-Process -PassThru -Wait setup/yakbd-setup.exe -ArgumentList "/quiet", "/norestart", "/l*v", "install.log"
-          if ($p.ExitCode -ne 0) { Get-Content install.log -Tail 40; throw "install: exit $($p.ExitCode)" }
-          foreach ($f in "yakbd.exe", "yakbd-gui.exe", "Qt6Core.dll", "LICENSE", "NOTICE", "yakbd-cli-LICENSE", "yakbd-cli-NOTICE", "licenses\LGPL-3.0.txt") {
-            if (-not (Test-Path (Join-Path $dir $f))) { throw "missing after install: $f" }
+          $setup = (Resolve-Path setup/yakbd-gui-setup.exe).Path
+          $root = Join-Path $env:ProgramW6432 "YAKBD"
+          $cli = Join-Path $root "CLI"
+          $ed = Join-Path $root "Editor"
+          $entry = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{F257BACA-1D4A-509F-9245-821ACEAAA3CC}"
+          $lnk = Join-Path $env:ProgramData "Microsoft\Windows\Start Menu\Programs\YAKBD Editor.lnk"
+          function MachinePath { [Environment]::GetEnvironmentVariable("Path", "Machine") -split ";" | Where-Object { $_ } }
+          function Run($what, [string[]] $arguments) {
+            $p = Start-Process -PassThru -Wait $setup -ArgumentList ($arguments + @("/quiet", "/norestart", "/l*v", "$what.log"))
+            if ($p.ExitCode -ne 0) { Get-Content "$what.log" -Tail 40; throw "${what}: exit $($p.ExitCode)" }
           }
-          $machine = (& (Join-Path $dir "yakbd.exe") version)
-          Write-Host "installed: $machine; files: $((Get-ChildItem -Recurse -File $dir).Count)"
-          $exe = Get-Item (Join-Path $dir "yakbd-gui.exe")
-          $st = Start-Process -PassThru -Wait $exe.FullName -ArgumentList @("--self-test", "tests/data/latin-altgr-deadkeys.kbl.json") -RedirectStandardOutput selftest.txt
+
+          # 1. /quiet without properties = the wizard's defaults: YAKBD Editor and YAKBD CLI, PATH off.
+          Run "install" @()
+          foreach ($f in "yakbd.exe", "LICENSE", "NOTICE") {
+            if (-not (Test-Path (Join-Path $cli $f))) { throw "missing after install: CLI\$f" }
+          }
+          foreach ($f in "yakbd-gui.exe", "qt.conf", "qt\qt.manifest", "qt\Qt6Core.dll", "qt\plugins\platforms\qwindows.dll",
+                     "LICENSE", "NOTICE", "licenses\LGPL-3.0.txt") {
+            if (-not (Test-Path (Join-Path $ed $f))) { throw "missing after install: Editor\$f" }
+          }
+          if (Get-ChildItem (Join-Path $ed "*.dll")) { throw "DLLs beside yakbd-gui.exe" }
+          if ((MachinePath) -contains $cli) { throw "the editor installer's default put YAKBD\CLI on PATH" }
+          $e = Get-ItemProperty $entry
+          Write-Host "entry: $($e.DisplayName) $($e.DisplayVersion) [$($e.YakbdComponents)] CLI $($e.YakbdCLIVersion) editor $($e.YakbdEditorVersion)"
+          if ($e.DisplayName -ne "YAKBD" -or $e.DisplayVersion -ne $env:FULL -or $e.YakbdComponents -ne "CLI,Editor") { throw "unexpected Installed apps entry" }
+          $sc = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
+          if ($sc.TargetPath -ne (Join-Path $ed "yakbd-gui.exe")) { throw "the shortcut points at '$($sc.TargetPath)'" }
+          Write-Host "shortcut: $lnk -> $($sc.TargetPath)"
+
+          # 2. The installed editor with a PATH of Windows only: Qt from Editor\qt\, the CLI from ..\CLI\.
+          $saved = $env:PATH
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+          $st = Start-Process -PassThru -Wait (Join-Path $ed "yakbd-gui.exe") -ArgumentList @("--self-test", "tests/data/latin-altgr-deadkeys.kbl.json") -RedirectStandardOutput selftest.txt
+          $env:PATH = $saved
           Get-Content selftest.txt
           if ($st.ExitCode -ne 0) { throw "installed editor: self-test failed" }
           if (-not (Select-String -Quiet -Path selftest.txt -Pattern "^YAKBD Editor $([regex]::Escape($env:FULL))$")) { throw "the installed editor does not report $env:FULL" }
-          if (-not (Select-String -Quiet -Path selftest.txt -SimpleMatch (Join-Path $dir "yakbd.exe"))) { throw "the editor did not use the yakbd.exe beside it" }
-          $p = Start-Process -PassThru -Wait setup/yakbd-setup.exe -ArgumentList "/x", "/quiet", "/norestart", "/l*v", "uninstall.log"
-          if ($p.ExitCode -ne 0) { Get-Content uninstall.log -Tail 40; throw "uninstall: exit $($p.ExitCode)" }
-          if (Test-Path $dir) { throw "uninstall left $dir" }
-          Write-Host "installed, self-tested and uninstalled on ${{ matrix.arch }}"
+          if (-not (Select-String -Quiet -Path selftest.txt -SimpleMatch "($(Join-Path $cli 'yakbd.exe')) validates")) { throw "the editor did not use CLI\yakbd.exe" }
+          Write-Host "CLI: $(& (Join-Path $cli 'yakbd.exe') version)"
+
+          # 3. Remove the editor only, with the user's settings: the CLI stays.
+          New-Item -Force "HKCU:\Software\YAKBD\YAKBD Editor" | Out-Null
+          Set-ItemProperty "HKCU:\Software\YAKBD\YAKBD Editor" appearance dark
+          Run "remove-editor" @("REMOVE=Editor", "REMOVEUSERDATA=1")
+          if (Test-Path $ed) { throw "REMOVE=Editor left $ed" }
+          if (Test-Path $lnk) { throw "REMOVE=Editor left the shortcut" }
+          if (Test-Path "HKCU:\Software\YAKBD") { throw "REMOVEUSERDATA=1 left the editor's settings" }
+          if (-not (Test-Path (Join-Path $cli "yakbd.exe"))) { throw "REMOVE=Editor removed the CLI" }
+          if ((Get-ItemProperty $entry).YakbdComponents -ne "CLI") { throw "the entry does not record the CLI alone" }
+
+          # 4. Uninstall everything.
+          Run "uninstall" @("/x")
+          if (Test-Path $root) { throw "uninstall left $root" }
+          if (Test-Path $entry) { throw "uninstall left the Installed apps entry" }
+          Write-Host "installed, self-tested, editor removed and uninstalled on ${{ matrix.arch }}"
 
   macos:
     needs: cli
@@ -321,9 +370,8 @@ jobs:
           TAG: ${{ needs.cli.outputs.tag }}
           QT_QPA_PLATFORM: offscreen
         run: |
-          v=${TAG#v}
-          chmod +x cli/yakbd-$v-darwin-*
-          cli=$PWD/cli/yakbd-$v-darwin-$( [ "$(uname -m)" = arm64 ] && echo arm64 || echo amd64 )
+          chmod +x cli/macos/yakbd
+          cli=$PWD/cli/macos/yakbd
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$HOME/qt \
             -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DYAKBD_CLI="$cli" -DYAKBD_GUI_VERSION_FULL="$FULL"
           cmake --build build --parallel
@@ -333,8 +381,7 @@ jobs:
         env:
           TAG: ${{ needs.cli.outputs.tag }}
         run: |
-          v=${TAG#v}
-          sh packaging/macos/package.sh build cli/yakbd-$v-darwin-amd64 cli/yakbd-$v-darwin-arm64 dist
+          sh packaging/macos/package.sh build cli/macos/yakbd dist cli
       - name: Self-test and screenshots of the package (macOS style, light and dark)
         run: |
           hdiutil attach dist/*.dmg -mountpoint /tmp/yakbd -nobrowse
@@ -387,7 +434,7 @@ jobs:
           V: ${{ inputs.version }}
         run: |
           mkdir release
-          want="yakbd-setup.exe YAKBD-Editor-$V.dmg YAKBD-Editor-$V-x86_64.AppImage appimage-runtime-sources-$V.tar.gz"
+          want="yakbd-gui-setup.exe YAKBD-Editor-$V.dmg YAKBD-Editor-$V-x86_64.AppImage appimage-runtime-sources-$V.tar.gz"
           for f in $want; do
             src=$(find collected -type f -name "$f" | head -1)
             # The AppImage runtime's sources (libfuse, LGPL-2.1) are owed with the AppImage (NOTICE): none, no release.

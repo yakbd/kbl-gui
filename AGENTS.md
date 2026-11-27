@@ -32,7 +32,7 @@ on glibc 2.35 and later. CMake 3.25+ is needed (Qt 6.12's minimum). Configuring 
 - `tests/`: Qt Test (`tst_jsontree`, `tst_document`, `tst_cli`), Qt Quick Test (`tst_qml` + `qml/tst_views.qml`),
   `screenshots.sh` + `pngstat`.
 - `packaging/{linux,windows,macos}`, `.github/workflows/`. Every package carries the CLI's LICENSE and NOTICE
-  (`yakbd-cli-*`, fetched from the CLI tag by `tools/fetch-cli.cmake` or the Packages workflow); the Linux packaging
+  (`yakbd-cli-*`, from the CLI release's archives via `tools/fetch-cli.cmake` or `packaging/cli-release.sh`); the Linux packaging
   also writes the AppImage runtime and libfuse source archives that a release with an AppImage must attach.
 - `tools/make-icons/`: renders the SVG icon into the `.ico` and `.icns`.
 
@@ -54,8 +54,9 @@ on glibc 2.35 and later. CMake 3.25+ is needed (Qt 6.12's minimum). Configuring 
 - A component that loads itself (SchemaForm via SchemaField) must get its pointer before it creates children
   (`Loader.setSource(url, props)`), or it recurses over the whole schema.
 - `offscreen` reports no colour scheme; light/dark screenshots need xcb under Xvfb with `QT_QPA_PLATFORMTHEME=gtk3`.
-- Windows: the install must be one flat folder (`CMAKE_INSTALL_BINDIR` "." is set before `qt_standard_project_setup`);
-  `yakbd-setup.exe` must be built with the Go of the CLI tag's `installer/stub-386.version` and from an LF checkout,
+- Windows: `package.ps1` moves Qt and the VC runtime into `qt\` (a private side-by-side assembly the exe's manifest
+  names: `-DYAKBD_QT_SUBFOLDER=ON`; PowerShell variable names ignore case, so none may shadow `-Arch`);
+  `yakbd-gui-setup.exe` must be built with the Go of the CLI tag's `installer/stub-386.version` and from an LF checkout,
   or the `yakbd.exe` it carries differs from the release's (`make-setup.sh` refuses that). Windows builds are MSVC
   (x64 and arm64 natively, one toolchain; Qt has arm64 for MSVC only); `package.ps1` copies the VC runtime DLLs
   from the developer shell's `VCToolsRedistDir`. Tests need LF test data

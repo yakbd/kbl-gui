@@ -1,15 +1,14 @@
 #!/bin/sh
-# macOS package: YAKBD Editor.app (universal: Qt's clang_64 build is x86_64 + arm64) with a universal yakbd CLI made with
-# lipo from the release's two binaries, in a .dmg. Unsigned (ad-hoc signature only): see README, "Open Anyway".
-#   packaging/macos/package.sh <build dir> <yakbd-darwin-amd64> <yakbd-darwin-arm64> <output dir> [<CLI docs folder>]
-# The CLI docs folder holds yakbd-cli-LICENSE and yakbd-cli-NOTICE (default: the folder of the amd64 binary).
+# macOS package: YAKBD Editor.app (universal: Qt's clang_64 build is x86_64 + arm64) with the release's universal yakbd
+# CLI inside, in a .dmg. Unsigned (ad-hoc signature only): see README, "Open Anyway".
+#   packaging/macos/package.sh <build dir> <yakbd (universal)> <output dir> [<CLI docs folder>]
+# The CLI docs folder holds yakbd-cli-LICENSE and yakbd-cli-NOTICE (default: the folder of the binary).
 set -eu
 build=$(cd "$1" && pwd)
-amd64=$2
-arm64=$3
-clidocs=${5:-$(dirname "$amd64")}
-mkdir -p "$4"
-out=$(cd "$4" && pwd)
+cli=$2
+clidocs=${4:-$(dirname "$cli")}
+mkdir -p "$3"
+out=$(cd "$3" && pwd)
 ver=$(sed -n "s/^YAKBD_GUI_VERSION_FULL:STRING=//p" "$build/CMakeCache.txt")
 name="YAKBD-Editor-$ver"  # universal (x86_64 + arm64)
 tmpdir="$out/.work"
@@ -32,7 +31,8 @@ rm -rf "$app/Contents/Resources/qml/QtTest" "$app/Contents/Frameworks/QtTest.fra
        "$app/Contents/PlugIns/imageformats/libqjpeg.dylib" "$app/Contents/PlugIns/imageformats/libqgif.dylib"
 
 # 2. The CLI, universal, next to the editor's executable.
-lipo -create "$amd64" "$arm64" -output "$app/Contents/MacOS/yakbd"
+install -m 0755 "$cli" "$app/Contents/MacOS/yakbd"
+lipo -info "$app/Contents/MacOS/yakbd" | grep -q "x86_64 arm64\|arm64 x86_64" || { echo "the CLI is not universal"; exit 1; }
 chmod 0755 "$app/Contents/MacOS/yakbd"
 lipo -info "$app/Contents/MacOS/yakbd"
 "$app/Contents/MacOS/yakbd" version

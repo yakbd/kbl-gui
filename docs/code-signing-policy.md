@@ -12,8 +12,8 @@ Free code signing provided by [SignPath.io](https://about.signpath.io), certific
 
 Only Windows files that this project builds from its own source:
 
-- `yakbd-setup.exe`, the Windows installer of an editor release (the yakbd tool's own installer carrying the
-  editor), published in the [releases](https://github.com/yakbd/yakbd-gui/releases) of `yakbd/yakbd-gui`;
+- `yakbd-gui-setup.exe`, the Windows installer of an editor release (the yakbd tool's own installer carrying the
+  editor), published in the [releases](https://github.com/yakbd/yakbd-gui/releases/latest) of `yakbd/yakbd-gui`;
 - inside it, the project's own programs: `yakbd-gui.exe` (the editor, from this repository) and `yakbd.exe` (the
   command-line tool, from [`yakbd/yakbd-cli`](https://github.com/yakbd/yakbd-cli), which has its own
   [code signing policy](https://github.com/yakbd/yakbd-cli/blob/main/docs/code-signing-policy.md)).
@@ -37,7 +37,7 @@ Not signed:
 - **Started by hand.** The workflow runs only when a maintainer starts it for a version; it has no automatic
   trigger. Every build of a release carries the same product name ("YAKBD Editor") and version.
 - **Signed only after approval.** The signing step sends the built files to SignPath: first `yakbd-gui.exe`, before
-  the installer is assembled, then `yakbd-setup.exe`. An approver checks that the request comes from this
+  the installer is assembled, then `yakbd-gui-setup.exe`. An approver checks that the request comes from this
   repository's Packages workflow for the intended version, and approves it in SignPath. Every release is approved
   by hand.
 - **Published unchanged.** The release is published with its assets and tag frozen (an immutable GitHub
