@@ -57,6 +57,16 @@ Item {
                     text: qsTr("Layer")
                     color: Ui.subtle
                 }
+                // When the row overflows, arrows show that layers lie beyond either end (greyed at the end reached).
+                ToolButton {
+                    objectName: "layerRowBack"
+                    visible: layerRow.overflows
+                    enabled: !layerRow.atXBeginning
+                    text: "\u2039"
+                    implicitWidth: 24
+                    onClicked: layerRow.scrollBy(-1)
+                    Accessible.name: qsTr("Earlier layers")
+                }
                 ListView {
                     id: layerRow
                     objectName: "layerRow"
@@ -74,6 +84,12 @@ Item {
                     onWidthChanged: positionViewAtIndex(currentIndex, ListView.Contain)
                     onCountChanged: positionViewAtIndex(currentIndex, ListView.Contain)
                     readonly property bool overflows: contentWidth > width + 1
+                    function scrollBy(step) {
+                        let i = step < 0 ? indexAt(contentX + 1, 1) : indexAt(contentX + width - 2, 1)
+                        if (i < 0)
+                            i = step < 0 ? indexAt(contentX + spacing + 1, 1) : indexAt(contentX + width - spacing - 2, 1)
+                        positionViewAtIndex(Math.max(0, Math.min(count - 1, i + step)), step < 0 ? ListView.Beginning : ListView.End)
+                    }
                     delegate: Button {
                         required property var modelData
                         checkable: true
@@ -94,6 +110,15 @@ Item {
                                                                      layerRow.contentX - e.angleDelta.y))
                         }
                     }
+                }
+                ToolButton {
+                    objectName: "layerRowForward"
+                    visible: layerRow.overflows
+                    enabled: !layerRow.atXEnd
+                    text: "\u203a"
+                    implicitWidth: 24
+                    onClicked: layerRow.scrollBy(1)
+                    Accessible.name: qsTr("Later layers")
                 }
                 ToolButton {
                     id: layerMenuButton
