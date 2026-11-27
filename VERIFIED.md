@@ -3,7 +3,7 @@
 Status on 2026-11-27: Qt 6.12.1, bundled yakbd CLI 0.1.0-preview.2 (0.1.0-preview.1 for the first Windows guest
 run). The sections below were checked on 0.1.0 development builds in the development repository before publication
 (date and runner image given). From the first release, 0.1.0-preview.1, runs of this repository's workflows are
-cited by their id (https://github.com/yakbd/kbl-gui/actions/runs/<id>).
+cited by their id (`https://github.com/yakbd/kbl-gui/actions/runs/<id>`).
 
 ## Release 0.1.0-preview.1
 
