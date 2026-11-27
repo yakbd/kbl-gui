@@ -1,6 +1,6 @@
 name: Linux
 
-# Build, tests (offscreen and under Xvfb) and light/dark screenshots, on the oldest supported build host.
+# Doc link check; build, tests (offscreen and under Xvfb) and light/dark screenshots, on the oldest supported build host.
 on:
   push:
     branches: [main]
@@ -10,6 +10,14 @@ permissions:
   contents: read
 
 jobs:
+  doc-links:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release links point at the latest, doc links at main
+        run: sh tools/check-doc-links.sh
+
   build:
     runs-on: ubuntu-24.04
     container: ubuntu:22.04

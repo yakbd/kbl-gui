@@ -3,7 +3,7 @@
 A preview of the desktop editor for `.kbl.json` keyboard layouts. It shows a layout as a keyboard, layer by layer,
 edits keys, dead keys, metadata and the Windows build choices, and saves only what you changed. Checking, converting
 (`.klc`, CLDR XML, layout DLLs) and building are done by the yakbd command-line tool, which ships with it:
-**yakbd-cli [@CLI_TAG@](https://github.com/yakbd/yakbd-cli/releases/tag/@CLI_TAG@)**, unchanged.
+**yakbd-cli @CLI_VERSION@** ([latest yakbd-cli release](https://github.com/yakbd/yakbd-cli/releases/latest)), unchanged.
 
 ## Windows
 

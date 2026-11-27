@@ -13,6 +13,7 @@ pin, compile, installer). It holds no Windows facts (CLEAN-ROOM.md).
     sh packaging/linux/package.sh build build/cli/yakbd dist   # AppImage + runtime sources
     tools/distro-check.sh dist                      # the AppImage on 5 distributions in Docker/Podman
     tools/desktop-check.sh dist                     # the AppImage on KDE Plasma (X11, portal dialog) and Wayland (weston, KWin)
+    sh tools/check-doc-links.sh                  # release links: releases/latest; doc links: blob/main (CI checks)
 
 The build host for Linux is Ubuntu 22.04 (`tools/docker/build.Dockerfile`, the same as CI) so that the binaries run
 on glibc 2.35 and later. CMake 3.25+ is needed (Qt 6.12's minimum). Configuring fetches the pinned CLI release
