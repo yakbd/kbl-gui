@@ -25,6 +25,22 @@ same files as the AppImage.
 The release's `yakbd-setup.exe` in the Windows 11 guest (install, swap with the CLI-only setup, uninstall) is
 checked before the release is published; its result is added here.
 
+## After 0.1.0-preview.1 (development builds, 2026-11-27)
+
+| check | where | result |
+|---|---|---|
+| Windows x64 and ARM64 built natively with MSVC (`windows-2025`, `windows-11-arm`), all tests on both, each payload's `--self-test` and FluentWinUI3 grabs light and dark | Packages run [46018326475](https://github.com/yakbd/yakbd-gui/actions/runs/46018326475) | pass |
+| one `yakbd-setup.exe` made on Linux by the CLI tag's `toolsetup`: `yakbd.exe` for x86, x64 and ARM64, each byte-identical to the one in the 0.1.0-preview.2 release zips, and the editor for x64 and ARM64 (219 files, 208 MB) | same run | pass |
+| that setup installed `/quiet` on an x64 and on an ARM64 runner: the files in Program Files, the installed editor's `--self-test` with the `yakbd.exe` beside it, uninstall `/x /quiet` removes the folder | same run | pass on both |
+| macOS, the main window with the native platform (cocoa): ⌘Z / ⇧⌘Z undo and redo, the appearance switches at once (`tst_window`; it checks ⌘, for Settings from the next run on, where an empty key sequence no longer skips) | Packages run [46020289966](https://github.com/yakbd/yakbd-gui/actions/runs/46020289966), `macos-15` | pass |
+| macOS, the packaged app driven by System Events (UI scripting was allowed on the runner): the menu bar is the system one (Apple, YAKBD, File, Edit, View, Layout, Help); the application menu holds About, Preferences… and Quit, moved there by Qt from Help, Edit and File | same run (`tools/macos-desktop-check.sh`) | pass (the menu then said "YAKBD"; the bundle name is "YAKBD Editor" since) |
+| macOS, the system switched to dark while the app ran: the app followed without a restart | same run | pass |
+| macOS, File › Open: the native open panel (NSOpenPanel, with Favorites, iCloud and tags), screenshot by `screencapture` | same run | pass |
+| KDE Plasma on X11 (Fedora 43 container, Xvfb): the AppImage follows the Breeze Light and Breeze Dark colour schemes of `kdeglobals` (Qt's built-in KDE theme; the Plasma platform-theme plugin is built against the system's Qt and does not load into the AppImage's Qt) | `tools/desktop-check.sh`, rootless Docker | pass |
+| KDE's own file dialog through the XDG desktop portal (`QT_QPA_PLATFORMTHEME=xdgdesktopportal`, xdg-desktop-portal-kde) | same | pass (a window of xdg-desktop-portal-kde; screenshot) |
+| Wayland: weston (headless) and KWin (`--virtual`), `QT_QPA_PLATFORM=wayland`: the editor's window renders; on KWin it follows Breeze Light/Dark | same | pass |
+| the AppImage on Ubuntu 22.04, 24.04, 26.04, Debian 12 and Fedora 43: self-test, offscreen window, X11 + GTK light and dark | `tools/distro-check.sh` | pass |
+
 ## Linux
 
 | check | where | result |
@@ -58,11 +74,11 @@ case-insensitive file system; the app is "YAKBD Editor.app" since.
 
 ## Not verified yet
 
-- **macOS, by a person**: that About, Settings and Quit appear in the application menu (Qt places them by their
-  titles); the native Open and Save dialogs; the "Open Anyway" flow for the unsigned app; switching light/dark
-  while the app runs; ⌘ shortcuts.
-- **Linux desktops** other than GNOME-like GTK under X11 (Xvfb): KDE Plasma, a Wayland session (the Wayland plugin is
-  packaged but has not run), the XDG portal file dialogs, Flatpak.
-- **Windows**: ARM64 (no editor build yet); live light/dark switching while the editor runs (each check started a
-  new process); a Start-menu shortcut does not exist (the CLI's installer has no facts for one yet).
+- **macOS, by a person**: the "Open Anyway" flow for the unsigned app; everyday use with a trackpad and the
+  system's accessibility settings. The application menu, the native open panel, ⌘ shortcuts and the live
+  light/dark switch ran on a GitHub macOS runner (above), not on a person's Mac.
+- **Linux**: a real KDE Plasma or GNOME session (the checks above ran in containers: X11 under Xvfb, headless
+  Wayland compositors, a portal started by hand); GNOME on Wayland; Flatpak; an ARM64 AppImage (none yet).
+- **Windows**: the Start-menu shortcut (it comes with yakbd-cli 0.1.0-preview.3); live light/dark switching while
+  the editor runs (each check started a new process); x86 Windows, where the setup installs the CLI only.
 - **Accessibility** beyond keyboard navigation and accessible names (no screen-reader run).

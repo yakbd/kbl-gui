@@ -85,6 +85,9 @@ private slots:
     void preferencesShortcut()
     {
         const QKeySequence prefs(QKeySequence::Preferences);
+#ifdef Q_OS_MACOS
+        QVERIFY2(!prefs.isEmpty(), "macOS has ⌘, for Settings");
+#endif
         if (prefs.isEmpty())
             QSKIP("this platform has no standard Preferences shortcut");
         QObject *dialog = win->findChild<QObject *>(QStringLiteral("preferencesDialog"));

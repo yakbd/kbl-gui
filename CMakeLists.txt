@@ -42,7 +42,7 @@ add_subdirectory(qml)
 qt_add_executable(yakbd-gui WIN32 MACOSX_BUNDLE src/main.cpp)
 set_target_properties(yakbd-gui PROPERTIES
   OUTPUT_NAME yakbd-gui
-  MACOSX_BUNDLE_BUNDLE_NAME "YAKBD"
+  MACOSX_BUNDLE_BUNDLE_NAME "YAKBD Editor"  # the application menu: "About YAKBD Editor", "Quit YAKBD Editor"
   MACOSX_BUNDLE_GUI_IDENTIFIER "io.github.yakbd.gui"
   MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
   MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"

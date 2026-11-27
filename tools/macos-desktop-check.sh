@@ -20,7 +20,7 @@ pid=$!
 sleep 10
 menu=$(osascript -e "tell application \"System Events\" to tell (first process whose unix id is $pid) to get name of every menu item of menu 1 of menu bar item 2 of menu bar 1" 2>&1)
 case "$menu" in
-  *"About YAKBD Editor"*Settings*Quit*) result app-menu "pass: $menu" ;;
+  *"About YAKBD"*Preferences*"Quit YAKBD"*|*"About YAKBD"*Settings*"Quit YAKBD"*) result app-menu "pass: $menu" ;;
   *"assistive access"*|*"not allowed"*|*"-25211"*|*"-1719"*) result app-menu "not checked: UI scripting refused by TCC ($menu)" ;;
   *) result app-menu "FAIL: $menu" ;;
 esac
