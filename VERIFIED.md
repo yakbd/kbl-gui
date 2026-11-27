@@ -5,6 +5,11 @@ run). The sections below were checked on 0.1.0 development builds in the develop
 (date and runner image given). From the first release, 0.1.0-preview.1, runs of this repository's workflows are
 cited by their id (`https://github.com/yakbd/yakbd-gui/actions/runs/<id>`).
 
+Earlier versions shipped different files: up to 0.1.0-preview.1 one `yakbd-setup.exe` with the editor and the CLI in
+one folder, plus a Windows zip and a Linux tarball. The history sections below name those files as they were then.
+Since 0.1.0-preview.3 a release has `yakbd-gui-setup.exe` (editor and CLI, in `YAKBD\Editor` and `YAKBD\CLI`), a `.dmg`,
+an AppImage, the AppImage runtime sources and `SHA256SUMS`.
+
 ## Release 0.1.0-preview.1 (history)
 
 That release and its files were removed when 0.1.0-preview.3 shipped. There is no editor 0.1.0-preview.2: from

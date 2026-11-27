@@ -44,7 +44,7 @@ Download from the [latest release](https://github.com/yakbd/yakbd-gui/releases/l
 workflow; each file has a `SHA256SUMS` line and a build provenance attestation: `gh attestation verify <file> -R
 yakbd/yakbd-gui`).
 
-- **Windows**: `yakbd-gui-setup.exe`, one installer for every Windows PC, with the components **YAKBD Editor** (x64
+- **Windows**: [`yakbd-gui-setup.exe`](https://github.com/yakbd/yakbd-gui/releases/latest/download/yakbd-gui-setup.exe), one installer for every Windows PC, with the components **YAKBD Editor** (x64
   and ARM64) and **YAKBD CLI** (x86, x64, ARM64; the editor needs it). It installs into `C:\Program Files\YAKBD\`
   (`Editor\` and `CLI\`), adds the Start-menu shortcut **YAKBD Editor**, and offers to put the CLI on the PATH
   (off by default; the CLI's own `yakbd-cli-setup.exe` turns it on). On 32-bit Windows the editor is greyed out
