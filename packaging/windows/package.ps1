@@ -74,12 +74,12 @@ $qt = Join-Path $stage "qt"
 New-Item -ItemType Directory -Force -Path $qt | Out-Null
 Get-ChildItem (Join-Path $stage "*.dll") | Move-Item -Destination $qt
 foreach ($dir in "plugins", "qml") { Move-Item (Join-Path $stage $dir) (Join-Path $qt $dir) }
-$arch = if ($Arch -eq "x64") { "amd64" } else { "arm64" }
+$asmArch = if ($Arch -eq "x64") { "amd64" } else { "arm64" }  # PowerShell names ignore case: not $arch
 $files = (Get-ChildItem (Join-Path $qt "*.dll") | Sort-Object Name | ForEach-Object { "  <file name=`"$($_.Name)`"/>" }) -join "`r`n"
 Set-Content -Encoding utf8 (Join-Path $qt "qt.manifest") @"
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-  <assemblyIdentity type="win32" name="qt" version="6.12.1.0" processorArchitecture="$arch"/>
+  <assemblyIdentity type="win32" name="qt" version="6.12.1.0" processorArchitecture="$asmArch"/>
 $files
 </assembly>
 "@
