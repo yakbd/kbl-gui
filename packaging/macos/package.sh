@@ -22,15 +22,14 @@ app="$tmpdir/stage/YAKBD Editor.app"
 [ -d "$app" ] || { echo "no YAKBD Editor.app in the install"; exit 1; }
 # Only what the editor uses: the macOS style (on Fusion, Basic and Qt Quick Native Style); no network code; SVG and
 # ICO images only.
-for style in Material Imagine Universal FluentWinUI3 Windows iOS; do
+for style in Material Imagine Universal FluentWinUI3 Windows; do  # not iOS: the macOS style uses its impl
   rm -rf "$app/Contents/Resources/qml/QtQuick/Controls/$style"
   rm -rf "$app/Contents/Frameworks/QtQuickControls2$style".framework "$app/Contents/Frameworks/QtQuickControls2$style"StyleImpl.framework
 done
 rm -rf "$app/Contents/Resources/qml/QtTest" "$app/Contents/Frameworks/QtTest.framework" \
        "$app/Contents/Frameworks/QtQuickTest.framework" "$app/Contents/PlugIns/qmltooling" \
        "$app/Contents/PlugIns/tls" "$app/Contents/PlugIns/networkinformation" "$app/Contents/PlugIns/generic" \
-       "$app/Contents/PlugIns/imageformats/libqjpeg.dylib" "$app/Contents/PlugIns/imageformats/libqgif.dylib" \
-       "$app/Contents/Frameworks/QtQuickControls2IOS.framework" "$app/Contents/Frameworks/QtQuickControls2IOSStyleImpl.framework"
+       "$app/Contents/PlugIns/imageformats/libqjpeg.dylib" "$app/Contents/PlugIns/imageformats/libqgif.dylib"
 
 # 2. The CLI, universal, next to the editor's executable.
 lipo -create "$amd64" "$arm64" -output "$app/Contents/MacOS/yakbd"

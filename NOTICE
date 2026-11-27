@@ -26,7 +26,8 @@ Qt modules shipped with the editor (all "LGPL-3.0-only" options of Qt's dual lic
 bill of materials inside each Qt archive): Qt Core, Qt Gui, Qt DBus (Linux, macOS), Qt Network, Qt OpenGL, Qt Svg,
 Qt Qml, Qt QmlMeta, Qt QmlModels, Qt QmlWorkerScript, Qt Quick, Qt Quick Layouts, Qt Quick Shapes, Qt Quick Effects,
 Qt Quick Templates 2, Qt Quick Controls 2 (with the Basic and Fusion styles; on Windows also FluentWinUI3, on macOS
-also the macOS style, Qt Quick Native Style and Qt Widgets, which that style draws with), Qt Quick Dialogs 2 (with
+also the macOS style with the iOS style's helpers it uses, Qt Quick Native Style and Qt Widgets, which that style
+draws with), Qt Quick Dialogs 2 (with
 its utilities and Qt Quick implementation), Qt Labs FolderListModel, and on Linux Qt Wayland Client,
 Qt WlShellIntegration and Qt XcbQpa, with the Qt plugins they load (platforms, platform themes, SVG and ICO image
 formats, the SVG icon engine, Wayland and xcb integrations). The Qt tools used to build the editor (moc, rcc,

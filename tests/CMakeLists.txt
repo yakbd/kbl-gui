@@ -52,10 +52,16 @@ endif()
 qt_add_executable(tst_window tst_window.cpp)
 target_link_libraries(tst_window PRIVATE kblcore Qt6::Test Qt6::Quick Qt6::QuickControls2 yakbduiplugin)
 add_test(NAME tst_window COMMAND tst_window)
-if(APPLE)
-  # The native platform (cocoa): only there do the standard keys become ⌘ shortcuts and the colour scheme switch.
+if(APPLE OR WIN32)
+  # The native platform (cocoa, windows): only there do the standard keys become the platform's shortcuts (⌘ on
+  # macOS) and does the colour scheme switch.
+  if(APPLE)
+    set(native cocoa)
+  else()
+    set(native windows)
+  endif()
   set_tests_properties(tst_window PROPERTIES ENVIRONMENT
-    "YAKBD_TESTDATA=${CMAKE_CURRENT_SOURCE_DIR}/data;YAKBD_CLI=${YAKBD_CLI};QT_QPA_PLATFORM=cocoa")
+    "YAKBD_TESTDATA=${CMAKE_CURRENT_SOURCE_DIR}/data;YAKBD_CLI=${YAKBD_CLI};QT_QPA_PLATFORM=${native}")
 else()
   set_tests_properties(tst_window PROPERTIES ENVIRONMENT "${test_env}")
 endif()
