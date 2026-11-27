@@ -43,8 +43,8 @@ converting (`.klc`, CLDR XML, layout DLLs) and building are done by the yakbd co
 ## Check a download
 
     sha256sum -c --ignore-missing SHA256SUMS
-    gh attestation verify <file> -R yakbd/kbl-gui
+    gh attestation verify <file> -R yakbd/yakbd-gui
 
 Every file has a build provenance attestation from this repository's Packages workflow. Qt 6.12.1 is used under the
-LGPL v3 (source URLs in [NOTICE](https://github.com/yakbd/kbl-gui/blob/main/NOTICE)); what was tested where is in
-[VERIFIED.md](https://github.com/yakbd/kbl-gui/blob/main/VERIFIED.md).
+LGPL v3 (source URLs in [NOTICE](https://github.com/yakbd/yakbd-gui/blob/main/NOTICE)); what was tested where is in
+[VERIFIED.md](https://github.com/yakbd/yakbd-gui/blob/main/VERIFIED.md).

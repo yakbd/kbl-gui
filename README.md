@@ -34,9 +34,9 @@ needs yakbd 0.1 or a later 0.x release.
 
 ## Install
 
-Download from the [releases](https://github.com/yakbd/kbl-gui/releases) of this repository (made by the `Packages`
+Download from the [releases](https://github.com/yakbd/yakbd-gui/releases) of this repository (made by the `Packages`
 workflow; each file has a `SHA256SUMS` line and a build provenance attestation: `gh attestation verify <file> -R
-yakbd/kbl-gui`).
+yakbd/yakbd-gui`).
 
 - **Windows** (x64): `yakbd-setup.exe` is the yakbd tool's own installer carrying the editor: it installs the
   editor and `yakbd.exe` into one folder and replaces a CLI-only install in place (and the other way round). It

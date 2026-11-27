@@ -1,4 +1,4 @@
-# kbl-gui: agent instructions
+# yakbd-gui: agent instructions
 
 The YAKBD desktop editor for `.kbl.json` keyboard layouts: C++ (document model, CLI bridge) and QML (views), Qt 6.12,
 Qt Quick Controls. It edits the JSON document and runs the `yakbd` CLI for everything else (validate, convert,
