@@ -387,6 +387,11 @@ jobs:
           hdiutil attach dist/*.dmg -mountpoint /tmp/yakbd -nobrowse
           app="/tmp/yakbd/YAKBD Editor.app/Contents/MacOS"
           lipo -info "$app/YAKBD Editor" "$app/yakbd"
+          # The licence texts travel in the .dmg: the editor's, Qt's and the CLI's.
+          for f in LICENSE NOTICE yakbd-cli-LICENSE yakbd-cli-NOTICE licenses/LGPL-3.0.txt licenses/GPL-3.0.txt; do
+            test -s "/tmp/yakbd/YAKBD Editor.app/Contents/Resources/$f" || { echo "the .dmg lacks $f"; exit 1; }
+          done
+          echo "licence files in the .dmg: ok"
           "$app/YAKBD Editor" --self-test tests/data/latin-altgr-deadkeys.kbl.json > /tmp/st.txt
           cat /tmp/st.txt
           grep -qx "YAKBD Editor $FULL" /tmp/st.txt

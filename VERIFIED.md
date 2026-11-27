@@ -1,6 +1,6 @@
 # What is verified
 
-Status on 2026-11-27: Qt 6.12.1, bundled yakbd CLI 0.1.0-preview.2 (0.1.0-preview.1 for the first Windows guest
+Status on 2026-11-27: Qt 6.12.1, bundled yakbd CLI 0.1.0-preview.3 (earlier sections: 0.1.0-preview.2, and 0.1.0-preview.1 for the first Windows guest
 run). The sections below were checked on 0.1.0 development builds in the development repository before publication
 (date and runner image given). From the first release, 0.1.0-preview.1, runs of this repository's workflows are
 cited by their id (`https://github.com/yakbd/yakbd-gui/actions/runs/<id>`).
@@ -31,6 +31,10 @@ uninstall, with `yakbd-cli-setup.exe`) is checked before the release is publishe
 
 | check | where | result |
 |---|---|---|
+| the two-installer layout with yakbd-cli 0.1.0-preview.3: `yakbd-gui-setup.exe` (56.7 MB, compressed payload) built by the tag's `toolsetup -editor`, its `yakbd.exe` for x86, x64 and ARM64 byte-identical to the ones in the released `yakbd-cli-setup.exe` (which `cli-release.sh` rebuilds byte for byte from the tag) | Packages run [46072344020](https://github.com/yakbd/yakbd-gui/actions/runs/46072344020) | pass |
+| that setup on an x64 and an ARM64 runner: `/quiet` installs Editor and CLI with PATH off (`YAKBD\CLI\`, `YAKBD\Editor\` with Qt in `qt\`, one Installed apps entry "YAKBD", the Start-menu shortcut); the installed editor's `--self-test` with a PATH of Windows only uses `..\CLI\yakbd.exe`; `REMOVE=Editor REMOVEUSERDATA=1` keeps the CLI and removes the settings; `/x` leaves nothing | same run | pass on both |
+| the payload in the install layout with a PATH of Windows only: every `Qt6*.dll` loaded from `Editor\qt\` (the private assembly), light and dark grabs | same run | pass on both |
+| a rehearsal of the release (`0.1.0-rehearsal.2`: the five files, `SHA256SUMS`, attestations, licence files in the AppImage; draft and tag deleted afterwards) | Packages run [46073085714](https://github.com/yakbd/yakbd-gui/actions/runs/46073085714) | pass |
 | Windows x64 and ARM64 built natively with MSVC (`windows-2025`, `windows-11-arm`), all tests on both, each payload's `--self-test` and FluentWinUI3 grabs light and dark | Packages run [46018326475](https://github.com/yakbd/yakbd-gui/actions/runs/46018326475) | pass |
 | one `yakbd-setup.exe` made on Linux by the CLI tag's `toolsetup`: `yakbd.exe` for x86, x64 and ARM64, each byte-identical to the one in the 0.1.0-preview.2 release zips, and the editor for x64 and ARM64 (219 files, 208 MB) | same run | pass |
 | that setup installed `/quiet` on an x64 and on an ARM64 runner: the files in Program Files, the installed editor's `--self-test` with the `yakbd.exe` beside it, uninstall `/x /quiet` removes the folder | same run | pass on both |
