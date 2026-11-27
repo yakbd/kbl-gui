@@ -1,7 +1,4 @@
 find_package(Qt6 REQUIRED COMPONENTS Test QuickTest)
-# Console programs on Windows too (qt_standard_project_setup makes executables WIN32 GUI programs, whose output
-# ctest cannot show).
-set(CMAKE_WIN32_EXECUTABLE OFF)
 
 # The released CLI the integration tests run: -DYAKBD_CLI=/path/to/yakbd, or fetched once into the build tree
 # from the release pinned in tools/cli-pins.cmake.
@@ -68,3 +65,10 @@ if(APPLE OR WIN32)
 else()
   set_tests_properties(tst_window PROPERTIES ENVIRONMENT "${test_env}")
 endif()
+# Console programs on Windows (qt_standard_project_setup makes executables GUI programs, whose output ctest cannot
+# show).
+foreach(t tst_jsontree tst_document tst_cli tst_qml tst_window)
+  if(TARGET ${t})
+    set_target_properties(${t} PROPERTIES WIN32_EXECUTABLE OFF)
+  endif()
+endforeach()
