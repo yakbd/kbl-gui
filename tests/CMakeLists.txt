@@ -1,4 +1,7 @@
 find_package(Qt6 REQUIRED COMPONENTS Test QuickTest)
+# Console programs on Windows too (qt_standard_project_setup makes executables WIN32 GUI programs, whose output
+# ctest cannot show).
+set(CMAKE_WIN32_EXECUTABLE OFF)
 
 # The released CLI the integration tests run: -DYAKBD_CLI=/path/to/yakbd, or fetched once into the build tree
 # from the release pinned in tools/cli-pins.cmake.
