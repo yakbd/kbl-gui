@@ -45,3 +45,9 @@ edits keys, dead keys, metadata and the Windows build choices, and saves only wh
 Every file has a build provenance attestation from this repository's Packages workflow. Qt 6.12.1 is used under the
 LGPL v3 (source URLs in [NOTICE](https://github.com/yakbd/yakbd-gui/blob/main/NOTICE)); what was tested where is in
 [VERIFIED.md](https://github.com/yakbd/yakbd-gui/blob/main/VERIFIED.md).
+
+## Code signing policy
+
+These files are not signed yet; signing through SignPath Foundation is planned (free code signing provided by
+[SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org)). The policy:
+[docs/code-signing-policy.md](https://github.com/yakbd/yakbd-gui/blob/main/docs/code-signing-policy.md).

@@ -120,6 +120,12 @@ and validate without a window), `--grab out.png` (screenshot and quit), `--appea
 [`VERIFIED.md`](VERIFIED.md) records what was checked where (Linux distributions, a Windows 11 guest without GPU,
 the macOS runner), with the run ids, and what still needs a person or a platform that has not run yet.
 
+## Code signing policy
+
+The Windows installer is to be signed through SignPath Foundation (planned; the application is made): free code
+signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+What is signed, how and by whom: [`docs/code-signing-policy.md`](docs/code-signing-policy.md).
+
 ## Licence
 
 MIT-0 (MIT No Attribution), see [`LICENSE`](LICENSE). The editor uses Qt under the LGPL v3 (dynamically linked);
