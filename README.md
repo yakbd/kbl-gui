@@ -1,10 +1,16 @@
 # YAKBD Editor
 
-A desktop editor for [`.kbl.json`](https://github.com/yakbd/kbl-spec) keyboard layouts, part of
-[YAKBD](https://github.com/yakbd). It shows the layout as a keyboard, layer by layer, and lets you change what each
-key types, edit dead keys, metadata and the Windows build choices. Checking, converting and building are done by the
-[`yakbd` command-line tool](https://github.com/yakbd/yakbd-cli), which ships with the editor: the editor never
-makes a Windows decision itself.
+A desktop editor for keyboard layouts in [`.kbl.json`](https://github.com/yakbd/kbl-spec), the one open format of
+[YAKBD](https://github.com/yakbd). YAKBD is an open-source keyboard layout designer: people design a layout once,
+and YAKBD turns it into native, installable layouts for each operating system and keyboard tool. The editor shows
+the layout as a keyboard, layer by layer, and lets you change what each key types, edit dead keys, metadata and the
+build choices of each target. Checking, converting and building are done by the [`yakbd` command-line
+tool](https://github.com/yakbd/yakbd-cli), which ships with the editor: the editor never makes a platform decision
+itself.
+
+Today the build target is Windows: the editor opens `.klc` files, CLDR keyboard XML and Windows layout DLLs, and
+builds Windows layout DLLs and installers. The official formats of other operating systems are planned next, then
+third-party formats such as Keyman; the editor gets each one through the `yakbd` tool.
 
 **Status: preview** (first release 0.1.0-preview.1). Built and tested on Linux, Windows and macOS (CI), and in a Windows 11 guest; what is
 still open is in [VERIFIED.md](VERIFIED.md).
