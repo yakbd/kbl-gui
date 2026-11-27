@@ -14,6 +14,7 @@
 #include <QQuickItem>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QScreen>
 #include <QSignalSpy>
 #include <QStyleHints>
 #include <QTest>
@@ -172,6 +173,8 @@ private slots:
             return QString();
         };
         for (int width : {760, 992, 1360}) {
+            if (width > win->screen()->availableGeometry().width())
+                continue; // a window cannot be wider than the screen (CI runners have 1024 x 768)
             win->setWidth(width);
             // The platform resizes the window and the row fits itself on a later turn of the event loop: wait for both.
             QTRY_COMPARE(win->width(), width);
