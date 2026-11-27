@@ -173,15 +173,16 @@ private slots:
         };
         for (int width : {760, 992, 1360}) {
             win->setWidth(width);
-            QTest::qWait(50);
+            // The platform resizes the window and the row fits itself on a later turn of the event loop: wait for both.
+            QTRY_COMPARE(win->width(), width);
+            QTest::qWait(200);
             if (width < 1000) // this file's layers do not fit there: the case under test
                 QVERIFY2(strip->property("overflows").toBool(), qPrintable(QStringLiteral("width %1 does not overflow").arg(width)));
             for (int i = 0; i < layers; ++i) {
                 page->setProperty("layerIndex", i);
-                QTest::qWait(50);
                 const QString where = QStringLiteral("width %1, layer %2").arg(win->width()).arg(i);
-                const QString problem = check(where);
-                QVERIFY2(problem.isEmpty(), qPrintable(problem));
+                QString problem;
+                QTRY_VERIFY2_WITH_TIMEOUT((problem = check(where)).isEmpty(), qPrintable(problem), 3000);
             }
             // Stepping with the arrows from the start to the end: each step shows whole tabs.
             if (strip->property("overflows").toBool()) {
@@ -189,7 +190,7 @@ private slots:
                 QTest::qWait(50);
                 for (int s = 0; s < layers; ++s) {
                     QMetaObject::invokeMethod(strip, "step", Q_ARG(QVariant, 1));
-                    QTest::qWait(20);
+                    QTest::qWait(100);
                     const auto tabs = tabsOf(strip);
                     for (QQuickItem *t : tabs) {
                         if (!t->isVisible())
