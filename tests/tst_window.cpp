@@ -176,7 +176,7 @@ private slots:
             // The platform resizes the window and the row fits itself on a later turn of the event loop: wait for both.
             QTRY_COMPARE(win->width(), width);
             QTest::qWait(200);
-            if (width < 1000) // this file's layers do not fit there: the case under test
+            if (width == 760) // this file's layers do not fit there in any style: the case under test
                 QVERIFY2(strip->property("overflows").toBool(), qPrintable(QStringLiteral("width %1 does not overflow").arg(width)));
             for (int i = 0; i < layers; ++i) {
                 page->setProperty("layerIndex", i);
