@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Merged into yakbd-gui.exe by the linker. The editor's Qt and Visual C++ runtime DLLs are a private side-by-side
+     assembly named "qt" in the subfolder qt\ next to the exe (packaging/windows/package.ps1 writes qt\qt.manifest),
+     so Windows finds them without PATH: the loader looks for a private assembly in <exe folder>\<assembly name>\
+     ("Assembly Searching Sequence", Microsoft Learn). -->
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity type="win32" name="qt" version="6.12.1.0" processorArchitecture="*"/>
+    </dependentAssembly>
+  </dependency>
+</assembly>

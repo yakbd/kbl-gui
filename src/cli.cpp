@@ -36,7 +36,13 @@ QString Cli::findProgram(const QString &configured)
         return QFileInfo(env).absoluteFilePath();
     if (!configured.isEmpty() && QFileInfo(configured).isExecutable())
         return QFileInfo(configured).absoluteFilePath();
-    const QString beside = QDir(QCoreApplication::applicationDirPath()).filePath(exeName());
+    // The Windows installers put the editor in YAKBD\Editor\ and the CLI in YAKBD\CLI; the Linux and macOS packages
+    // put the CLI beside the editor.
+    const QDir app(QCoreApplication::applicationDirPath());
+    const QString sibling = QDir::cleanPath(app.filePath(QStringLiteral("../CLI/") + exeName()));
+    if (QFileInfo(sibling).isExecutable())
+        return QDir::toNativeSeparators(sibling);
+    const QString beside = app.filePath(exeName());
     if (QFileInfo(beside).isExecutable())
         return beside;
     return QStandardPaths::findExecutable(QStringLiteral("yakbd"));

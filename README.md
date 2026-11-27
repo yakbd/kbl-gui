@@ -12,8 +12,8 @@ Today the build target is Windows: the editor opens `.klc` files, CLDR keyboard 
 builds Windows layout DLLs and installers. The official formats of other operating systems are planned next, then
 third-party formats such as Keyman; the editor gets each one through the `yakbd` tool.
 
-**Status: preview** (first release 0.1.0-preview.1). Built and tested on Linux, Windows and macOS (CI), and in a Windows 11 guest; what is
-still open is in [VERIFIED.md](VERIFIED.md).
+**Status: preview** (see the [latest release](https://github.com/yakbd/yakbd-gui/releases/latest)). Built and tested on
+Linux, Windows and macOS (CI), and in a Windows 11 guest; what is still open is in [VERIFIED.md](VERIFIED.md).
 
 ## What it does
 
@@ -87,12 +87,15 @@ and GTK runtime libraries, Xvfb for the screenshot test) and installs a pinned C
 
     cmake -DPLATFORM=win64_msvc2022_64 -DDEST=C:/qt -P tools/getqt.cmake      # ARM64: win64_msvc2022_arm64
     # in a "Developer PowerShell for VS" of the same architecture:
-    cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=C:/qt -DYAKBD_CLI=C:/path/to/yakbd.exe
+    cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=C:/qt -DYAKBD_CLI=C:/path/to/yakbd.exe -DYAKBD_QT_SUBFOLDER=ON
     cmake --build build
     pwsh packaging/windows/package.ps1 -Build build -Arch x64 -CliDocs <folder with yakbd-cli-LICENSE and -NOTICE> -Out dist
 
-That gives `dist\payload-x64\` (the editor, Qt, the Visual C++ runtime and the licence texts); run its
-`yakbd-gui.exe`. `packaging/windows/make-setup.sh` (Linux or macOS, with Go) turns the x64 and ARM64 payloads into
+That gives `dist\payload-x64\`, the installed `YAKBD\Editor\` folder: `yakbd-gui.exe`, `qt.conf` and the licence
+texts, with Qt and the Visual C++ runtime in `qt\`, a private side-by-side assembly the exe's manifest names (so
+Windows finds it without PATH; `YAKBD_QT_SUBFOLDER=ON` adds that manifest, and such an exe starts only with `qt\`
+beside it). The editor finds the CLI at `..\CLI\yakbd.exe`, beside itself, or on PATH.
+`packaging/windows/make-setup.sh` (Linux or macOS, with Go) turns the x64 and ARM64 payloads into
 `yakbd-setup.exe` with a checkout of yakbd-cli at the release tag, whose `tools/toolsetup` is the installer
 machinery. Use the Go version named in the checkout's `installer/stub-386.version`: only then is every `yakbd.exe` it
 carries byte-identical to the release's, which the script checks against the release's zips.

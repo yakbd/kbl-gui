@@ -52,7 +52,12 @@ dmgdir="$tmpdir/dmg"
 mkdir -p "$dmgdir"
 cp -R "$app" "$dmgdir/"
 ln -s /Applications "$dmgdir/Applications"
-hdiutil create -volname "YAKBD Editor $ver" -srcfolder "$dmgdir" -ov -format ULMO "$out/$name.dmg"
+# hdiutil create fails now and then with "Resource busy" on CI machines; it works when tried again.
+for try in 1 2 3 4 5; do
+  hdiutil create -volname "YAKBD Editor $ver" -srcfolder "$dmgdir" -ov -format ULMO "$out/$name.dmg" && break
+  [ "$try" = 5 ] && exit 1
+  sleep 10
+done
 rm -rf "$tmpdir"
 (cd "$out" && shasum -a 256 "$name.dmg" > "$name.SHA256SUMS")
 ls -l "$out"

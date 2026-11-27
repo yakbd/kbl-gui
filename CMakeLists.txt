@@ -61,6 +61,12 @@ endif()
 if(WIN32)
   configure_file(packaging/windows/yakbd-gui.rc.in ${CMAKE_CURRENT_BINARY_DIR}/yakbd-gui.rc @ONLY)
   target_sources(yakbd-gui PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/yakbd-gui.rc)
+  # Packages keep Qt in Editor\qt\ as a private side-by-side assembly (package.ps1); an exe built with this option
+  # starts only with that folder beside it, so plain development builds leave it off.
+  option(YAKBD_QT_SUBFOLDER "Windows: find Qt in the qt\\ subfolder (private assembly; for packages)" OFF)
+  if(YAKBD_QT_SUBFOLDER)
+    target_sources(yakbd-gui PRIVATE packaging/windows/yakbd-gui.manifest)
+  endif()
 endif()
 target_link_libraries(yakbd-gui PRIVATE kblcore Qt6::Quick Qt6::QuickControls2 yakbduiplugin)
 

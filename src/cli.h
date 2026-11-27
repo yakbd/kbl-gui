@@ -36,7 +36,7 @@ public:
     QString operation() const { return m_op; }
     QString log() const { return m_log; }
 
-    // Finds yakbd: the configured path, then next to the GUI executable, then on PATH. Checks `yakbd version`.
+    // Finds yakbd: $YAKBD_CLI, the configured path, ..\CLI\ (the Windows install layout), beside the editor, PATH.
     Q_INVOKABLE void locate();
     static QString findProgram(const QString &configured);
     static QString queryVersion(const QString &program, QString *problem);

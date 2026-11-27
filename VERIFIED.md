@@ -5,7 +5,7 @@ run). The sections below were checked on 0.1.0 development builds in the develop
 (date and runner image given). From the first release, 0.1.0-preview.1, runs of this repository's workflows are
 cited by their id (`https://github.com/yakbd/yakbd-gui/actions/runs/<id>`).
 
-## Release 0.1.0-preview.1
+## Release 0.1.0-preview.1 (history: that release and its files were removed when 0.1.0-preview.2 shipped)
 
 | check | where | result |
 |---|---|---|
@@ -13,9 +13,8 @@ cited by their id (`https://github.com/yakbd/yakbd-gui/actions/runs/<id>`).
 | the release files: `SHA256SUMS`, a build provenance attestation for every file (`gh attestation verify`), the editor's LICENSE, NOTICE and licence texts and the CLI's LICENSE and NOTICE in the zip, tarball, AppImage and `.dmg` (the setup's payload is the zip's folder) | the draft release, checked after download | pass |
 | a rehearsal of the same workflow (`0.1.0-rehearsal.1`, draft and tag deleted afterwards) | Packages run [46002079436](https://github.com/yakbd/yakbd-gui/actions/runs/46002079436) | pass |
 
-The repository was renamed from `yakbd/kbl-gui` to `yakbd/yakbd-gui` after this release. Its attestations name the old
-repository, so they verify with `gh attestation verify <file> --owner yakbd` or `-R yakbd/kbl-gui`, not with
-`-R yakbd/yakbd-gui`. Releases from 0.1.0-preview.2 on verify with `-R yakbd/yakbd-gui`.
+The repository was renamed from `yakbd/kbl-gui` to `yakbd/yakbd-gui` after this release; releases from
+0.1.0-preview.2 on verify with `gh attestation verify <file> -R yakbd/yakbd-gui`.
 
 From 0.1.0-preview.2 a release has fewer files: one `yakbd-setup.exe` for every Windows architecture (the editor for
 x64 and ARM64, built with MSVC; the sections below used MinGW and x64 only), the `.dmg`, the AppImage and its runtime

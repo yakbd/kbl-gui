@@ -1,7 +1,7 @@
-# The editor's Windows payload for one architecture: yakbd-gui.exe with Qt, the Visual C++ runtime, the licence
-# texts and the CLI's LICENSE and NOTICE, in one flat folder. packaging/windows/make-setup.sh puts the x64 and arm64
-# payloads into yakbd-setup.exe, the yakbd tool's own installer (yakbd-cli docs/installer-cli.md §12.1), next to
-# yakbd.exe. Run in a Visual Studio developer shell of the target architecture (for VCToolsRedistDir).
+# The editor's Windows payload for one architecture, the contents of the install folder YAKBD\Editor\: yakbd-gui.exe,
+# qt.conf, the licence texts and the CLI's LICENSE and NOTICE, with Qt, its plugins and QML and the Visual C++ runtime
+# in the subfolder qt\ (a private side-by-side assembly; the build needs -DYAKBD_QT_SUBFOLDER=ON). The editor finds the
+# CLI at ..\CLI\yakbd.exe. Run in a Visual Studio developer shell of the target architecture (for VCToolsRedistDir).
 #   pwsh packaging/windows/package.ps1 -Build build -Arch x64|arm64 -CliDocs <folder> -Out dist
 # Writes <Out>\payload-<Arch>\.
 param(
@@ -64,6 +64,27 @@ while ($queue.Count -gt 0) {
 }
 foreach ($dll in $needed.Keys) { Copy-Item $available[$dll] $stage }
 Write-Host "Visual C++ runtime from $($crt.FullName): $(($needed.Keys | Sort-Object) -join ', ')"
+
+# 2b. Qt, its plugins and QML, and the runtime into the subfolder qt\, so that the install folder holds only
+#     yakbd-gui.exe, qt.conf and the licences. The DLLs become a private side-by-side assembly named "qt": the exe
+#     (built with YAKBD_QT_SUBFOLDER) declares it in its manifest, and Windows looks for a private assembly in
+#     <exe folder>\<assembly name>\ (Microsoft Learn, "Assembly Searching Sequence"), so no PATH is needed. qt.conf
+#     points Qt at qt\plugins and qt\qml.
+$qt = Join-Path $stage "qt"
+New-Item -ItemType Directory -Force -Path $qt | Out-Null
+Get-ChildItem (Join-Path $stage "*.dll") | Move-Item -Destination $qt
+foreach ($dir in "plugins", "qml") { Move-Item (Join-Path $stage $dir) (Join-Path $qt $dir) }
+$arch = if ($Arch -eq "x64") { "amd64" } else { "arm64" }
+$files = (Get-ChildItem (Join-Path $qt "*.dll") | Sort-Object Name | ForEach-Object { "  <file name=`"$($_.Name)`"/>" }) -join "`r`n"
+Set-Content -Encoding utf8 (Join-Path $qt "qt.manifest") @"
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity type="win32" name="qt" version="6.12.1.0" processorArchitecture="$arch"/>
+$files
+</assembly>
+"@
+Set-Content -Encoding ascii (Join-Path $stage "qt.conf") "[Paths]`r`nPrefix = qt`r`n"
+Write-Host "qt\: $((Get-ChildItem (Join-Path $qt '*.dll')).Count) DLLs in the private assembly"
 
 # 3. Licences: ours, Qt's (LGPL) and the other texts NOTICE names, and the CLI's own LICENSE and NOTICE (they go next
 #    to yakbd.exe when the setup installs the payload).

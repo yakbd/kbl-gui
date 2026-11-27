@@ -165,7 +165,7 @@ jobs:
           Expand-Archive "cli/yakbd-$v-windows-${{ matrix.arch }}.zip" cli/win
           $cli = (Get-ChildItem -Recurse cli/win -Filter yakbd.exe | Select-Object -First 1).FullName
           "CLI=$cli" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=C:/qt -DYAKBD_CLI="$cli" -DYAKBD_GUI_VERSION_FULL="$env:FULL"
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=C:/qt -DYAKBD_CLI="$cli" -DYAKBD_GUI_VERSION_FULL="$env:FULL" -DYAKBD_QT_SUBFOLDER=ON
           if ($LASTEXITCODE -ne 0) { throw "configure failed" }
           cmake --build build
           if ($LASTEXITCODE -ne 0) { throw "build failed" }
@@ -176,14 +176,34 @@ jobs:
           pwsh packaging/windows/package.ps1 -Build build -Arch ${{ matrix.arch }} -CliDocs cli -Out dist
           if ($LASTEXITCODE -ne 0) { throw "payload failed" }
       # Signing (later, SignPath): sign dist/payload-*/yakbd-gui.exe here, before the setup is made.
-      - name: Self-test and screenshots of the payload (FluentWinUI3, light and dark)
+      - name: Install layout without PATH; self-test and screenshots (FluentWinUI3, light and dark)
         run: |
-          $exe = "dist/payload-${{ matrix.arch }}/yakbd-gui.exe"
-          $env:YAKBD_CLI = $env:CLI
+          # The installed layout: YAKBD\Editor\ (the payload: Qt in qt\, found through the exe's manifest) and
+          # YAKBD\CLI\yakbd.exe. PATH holds only Windows itself, so neither Qt nor the CLI can come from PATH.
+          $root = Join-Path $env:RUNNER_TEMP "YAKBD"
+          Copy-Item -Recurse "dist/payload-${{ matrix.arch }}" (Join-Path $root "Editor")
+          New-Item -ItemType Directory (Join-Path $root "CLI") | Out-Null
+          Copy-Item $env:CLI (Join-Path $root "CLI\yakbd.exe")
+          $loose = Get-ChildItem (Join-Path $root "Editor\*.dll")
+          if ($loose) { throw "DLLs beside yakbd-gui.exe: $($loose.Name -join ', ')" }
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+          Remove-Item Env:YAKBD_CLI -ErrorAction SilentlyContinue
+          $exe = Join-Path $root "Editor\yakbd-gui.exe"
           $st = Start-Process -PassThru -Wait $exe -ArgumentList @("--self-test", "tests/data/latin-altgr-deadkeys.kbl.json") -RedirectStandardOutput selftest.txt
           Get-Content selftest.txt
           if ($st.ExitCode -ne 0) { throw "self-test failed" }
           if (-not (Select-String -Quiet -Path selftest.txt -Pattern "^YAKBD Editor $([regex]::Escape($env:FULL))$")) { throw "the payload does not report $env:FULL" }
+          if (-not (Select-String -Quiet -SimpleMatch -Path selftest.txt -Pattern "($root\CLI\yakbd.exe) validates")) { throw "the editor did not use ..\CLI\yakbd.exe" }
+          # The Qt modules came from qt\ (the private assembly), not from anywhere else.
+          $p = Start-Process -PassThru $exe -ArgumentList @("--size", "800x600", "tests/data/latin-altgr-deadkeys.kbl.json")
+          Start-Sleep 6
+          $mods = (Get-Process -Id $p.Id).Modules.FileName
+          Stop-Process -Id $p.Id
+          $qtmods = $mods | Where-Object { (Split-Path -Leaf $_) -like "Qt6*.dll" }
+          $qtmods | ForEach-Object { Write-Host "loaded $_" }
+          if (-not $qtmods) { throw "no Qt module loaded" }
+          $elsewhere = $qtmods | Where-Object { -not $_.StartsWith((Join-Path $root "Editor\qt\"), "OrdinalIgnoreCase") }
+          if ($elsewhere) { throw "Qt loaded from outside Editor\qt\: $elsewhere" }
           New-Item -ItemType Directory shots | Out-Null
           foreach ($mode in "light", "dark") {
             $p = Start-Process -PassThru -Wait $exe -ArgumentList @("--appearance", $mode, "--size", "1360x860", "--grab", "shots/keyboard-$mode.png", "--grab-delay", "4000", "--select", "/hardware/layers/4/bindings/KeyE", "tests/data/latin-altgr-deadkeys.kbl.json")
