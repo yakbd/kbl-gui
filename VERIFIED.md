@@ -5,7 +5,10 @@ run). The sections below were checked on 0.1.0 development builds in the develop
 (date and runner image given). From the first release, 0.1.0-preview.1, runs of this repository's workflows are
 cited by their id (`https://github.com/yakbd/yakbd-gui/actions/runs/<id>`).
 
-## Release 0.1.0-preview.1 (history: that release and its files were removed when 0.1.0-preview.2 shipped)
+## Release 0.1.0-preview.1 (history)
+
+That release and its files were removed when 0.1.0-preview.3 shipped. There is no editor 0.1.0-preview.2: from
+0.1.0-preview.3 on the editor's version follows the CLI's.
 
 | check | where | result |
 |---|---|---|
@@ -14,9 +17,9 @@ cited by their id (`https://github.com/yakbd/yakbd-gui/actions/runs/<id>`).
 | a rehearsal of the same workflow (`0.1.0-rehearsal.1`, draft and tag deleted afterwards) | Packages run [46002079436](https://github.com/yakbd/yakbd-gui/actions/runs/46002079436) | pass |
 
 The repository was renamed from `yakbd/kbl-gui` to `yakbd/yakbd-gui` after this release; releases from
-0.1.0-preview.2 on verify with `gh attestation verify <file> -R yakbd/yakbd-gui`.
+0.1.0-preview.3 on verify with `gh attestation verify <file> -R yakbd/yakbd-gui`.
 
-From 0.1.0-preview.2 a release has fewer files: one `yakbd-setup.exe` for every Windows architecture (the editor for
+From 0.1.0-preview.3 a release has fewer files: one `yakbd-setup.exe` for every Windows architecture (the editor for
 x64 and ARM64, built with MSVC; the sections below used MinGW and x64 only), the `.dmg`, the AppImage and its runtime
 sources. The Windows zip and the Linux tarball are gone; the distribution checks below ran the tarball, which held the
 same files as the AppImage.
