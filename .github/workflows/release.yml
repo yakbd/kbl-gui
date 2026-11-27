@@ -307,7 +307,8 @@ jobs:
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$HOME/qt \
             -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DYAKBD_CLI="$cli" -DYAKBD_GUI_VERSION_FULL="$FULL"
           cmake --build build --parallel
-          ctest --test-dir build --output-on-failure --timeout 300
+          # A test failure fails the job at the end, after the package and the desktop checks (they show more).
+          ctest --test-dir build --output-on-failure --timeout 300 || echo "TESTS_FAILED=1" >> "$GITHUB_ENV"
       - name: Package
         env:
           TAG: ${{ needs.cli.outputs.tag }}
@@ -343,6 +344,8 @@ jobs:
           path: shots/
           if-no-files-found: warn
           retention-days: 14
+      - name: Test result
+        run: if [ -n "${TESTS_FAILED:-}" ]; then echo "::error::ctest failed; see Build and test"; exit 1; fi
 
   release:
     name: Draft release
