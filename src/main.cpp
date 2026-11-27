@@ -39,6 +39,7 @@ static const char *defaultStyle()
 static int selfTest(const QString &file)
 {
     auto say = [](const QString &s) { std::printf("%s\n", qPrintable(s)); };
+    say(QStringLiteral("YAKBD Editor ") + QStringLiteral(YAKBD_GUI_VERSION));
     KblDocument doc;
     if (!doc.open(file)) {
         say(QStringLiteral("FAIL open: ") + doc.lastError());

@@ -4,7 +4,8 @@ name: Packages
 # yakbd-setup.exe (the CLI's installer with the editor as extra payload), macOS .dmg (universal, unsigned).
 # By default the latest tagged CLI release, verified by SHA256SUMS and its build provenance attestation.
 # Windows and macOS jobs are manual to save CI minutes (they are slow): run it when a check or a release needs it.
-# The packages are workflow artifacts; this workflow publishes no release.
+# The packages are workflow artifacts. With a version, a last job collects them into a DRAFT release (tag v<version>,
+# SHA256SUMS, build provenance attestations); a maintainer publishes it.
 on:
   workflow_dispatch:
     inputs:
@@ -17,9 +18,17 @@ on:
         description: "yakbd-cli release tag (empty: the latest release)"
         type: string
         default: ""
+      version:
+        description: "Release version: 0.1.0-preview.1 or 0.1.0-rehearsal.N (empty: packages only, no release)"
+        type: string
+        default: ""
 
 permissions:
   contents: read
+
+env:
+  # The editor's full version in every package (CMake YAKBD_GUI_VERSION_FULL); "-dev" without a release.
+  FULL: ${{ inputs.version != '' && inputs.version || '0.1.0-dev' }}
 
 jobs:
   cli:
@@ -35,8 +44,16 @@ jobs:
         id: tag
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          PLATFORMS: ${{ inputs.platforms }}
           WANT: ${{ inputs.cli }}
         run: |
+          if [ -n "$VERSION" ]; then
+            echo "$VERSION" | grep -Eqx '0\.1\.0-(preview\.1|rehearsal\.[0-9]+)' || { echo "::error::version $VERSION is not accepted"; exit 1; }
+            [ "$PLATFORMS" = all ] || { echo "::error::a release needs platforms=all"; exit 1; }
+            [ -n "$WANT" ] || { echo "::error::a release names its yakbd-cli tag explicitly (input cli)"; exit 1; }
+            if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v$VERSION" >/dev/null 2>&1; then echo "::error::tag v$VERSION exists"; exit 1; fi
+          fi
           tag="$WANT"
           if [ -z "$tag" ]; then tag=$(gh release view -R yakbd/yakbd-cli --json tagName -q .tagName); fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
@@ -90,10 +107,15 @@ jobs:
         run: |
           cli=$PWD/cli/yakbd-${TAG#v}-linux-amd64
           chmod +x "$cli"
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/qt -DYAKBD_CLI="$cli"
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/qt -DYAKBD_CLI="$cli" -DYAKBD_GUI_VERSION_FULL="$FULL"
           cmake --build build
           ctest --test-dir build --output-on-failure --timeout 300
           sh packaging/linux/package.sh build "$cli" dist
+          # The package reports the release version.
+          tar -xzf "dist/yakbd-gui-$FULL-linux-x86_64.tar.gz" -C /tmp
+          "/tmp/yakbd-gui-$FULL-linux-x86_64/bin/yakbd-gui" --self-test tests/data/minimal-qwerty.kbl.json > /tmp/st.txt
+          cat /tmp/st.txt
+          grep -qx "YAKBD Editor $FULL" /tmp/st.txt
       - uses: actions/upload-artifact@v4
         with:
           name: packages-linux
@@ -144,7 +166,7 @@ jobs:
           Expand-Archive "cli/yakbd-$v-windows-x64.zip" cli/x64
           $cli = (Get-ChildItem -Recurse cli/x64 -Filter yakbd.exe | Select-Object -First 1).FullName
           "CLI=$cli" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
-          cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=C:/qt -DYAKBD_CLI="$cli"
+          cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=C:/qt -DYAKBD_CLI="$cli" -DYAKBD_GUI_VERSION_FULL="$env:FULL"
           cmake --build build --parallel
           $env:PATH = "C:/qt/bin;$env:PATH"
           ctest --test-dir build --output-on-failure -V --timeout 300
@@ -166,6 +188,7 @@ jobs:
           $st = Start-Process -PassThru -Wait $exe -ArgumentList @("--self-test", "tests/data/latin-altgr-deadkeys.kbl.json") -RedirectStandardOutput selftest.txt
           Get-Content selftest.txt
           if ($st.ExitCode -ne 0) { throw "self-test failed" }
+          if (-not (Select-String -Quiet -Path selftest.txt -Pattern "^YAKBD Editor $([regex]::Escape($env:FULL))$")) { throw "the package does not report $env:FULL" }
           New-Item -ItemType Directory shots | Out-Null
           foreach ($mode in "light", "dark") {
             $p = Start-Process -PassThru -Wait $exe -ArgumentList @("--appearance", $mode, "--size", "1360x860", "--grab", "shots/keyboard-$mode.png", "--grab-delay", "4000", "--select", "/hardware/layers/4/bindings/KeyE", "tests/data/latin-altgr-deadkeys.kbl.json")
@@ -207,7 +230,7 @@ jobs:
           chmod +x cli/yakbd-$v-darwin-*
           cli=$PWD/cli/yakbd-$v-darwin-$( [ "$(uname -m)" = arm64 ] && echo arm64 || echo amd64 )
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$HOME/qt \
-            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DYAKBD_CLI="$cli"
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DYAKBD_CLI="$cli" -DYAKBD_GUI_VERSION_FULL="$FULL"
           cmake --build build --parallel
           ctest --test-dir build --output-on-failure --timeout 300
       - name: Package
@@ -221,7 +244,9 @@ jobs:
           hdiutil attach dist/*.dmg -mountpoint /tmp/yakbd -nobrowse
           app="/tmp/yakbd/YAKBD Editor.app/Contents/MacOS"
           lipo -info "$app/YAKBD Editor" "$app/yakbd"
-          "$app/YAKBD Editor" --self-test tests/data/latin-altgr-deadkeys.kbl.json
+          "$app/YAKBD Editor" --self-test tests/data/latin-altgr-deadkeys.kbl.json > /tmp/st.txt
+          cat /tmp/st.txt
+          grep -qx "YAKBD Editor $FULL" /tmp/st.txt
           mkdir shots
           for mode in light dark; do
             "$app/YAKBD Editor" --appearance $mode --size 1360x860 --grab shots/keyboard-$mode.png --grab-delay 4000 \
@@ -240,3 +265,50 @@ jobs:
           path: shots/*.png
           if-no-files-found: warn
           retention-days: 14
+
+  release:
+    name: Draft release
+    needs: [cli, linux, windows, macos]
+    if: inputs.version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packages-*
+          path: collected
+      - name: Collect the release files
+        env:
+          V: ${{ inputs.version }}
+        run: |
+          mkdir release
+          want="yakbd-setup.exe yakbd-gui-$V-windows-x64.zip yakbd-gui-$V-macos-universal.dmg
+                yakbd-gui-$V-linux-x86_64.tar.gz yakbd-gui-$V-linux-x86_64.AppImage
+                type2-runtime-20251108-source.tar.gz fuse-3.15.0.tar.xz"
+          for f in $want; do
+            src=$(find collected -type f -name "$f" | head -1)
+            # The AppImage's runtime and libfuse sources are owed with the AppImage (NOTICE): no release without them.
+            [ -n "$src" ] || { echo "::error::$f is missing"; exit 1; }
+            cp "$src" release/
+          done
+          cd release
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: release/*
+      - name: Tag and draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ inputs.version }}
+          CLI_TAG: ${{ needs.cli.outputs.tag }}
+        run: |
+          sed -e "s/@VERSION@/$V/g" -e "s/@CLI_TAG@/$CLI_TAG/g" -e "s/@CLI_VERSION@/${CLI_TAG#v}/g" \
+            packaging/RELEASE-NOTES.md > notes.md
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/v$V" -f sha="$GITHUB_SHA" >/dev/null
+          gh release create "v$V" release/* --draft --verify-tag --title "YAKBD Editor $V" --notes-file notes.md
+          echo "draft release v$V" >> "$GITHUB_STEP_SUMMARY"

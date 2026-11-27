@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 $Build = (Resolve-Path $Build).Path
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
 $Out = (Resolve-Path $Out).Path
-$ver = (Select-String -Path "$Build/CMakeCache.txt" -Pattern '^CMAKE_PROJECT_VERSION:STATIC=(.*)$').Matches[0].Groups[1].Value
+$ver = (Select-String -Path "$Build/CMakeCache.txt" -Pattern '^YAKBD_GUI_VERSION_FULL:STRING=(.*)$').Matches[0].Groups[1].Value
 $name = "yakbd-gui-$ver-windows-x64"
 $work = Join-Path $Out ".work"
 if (Test-Path $work) { Remove-Item -Recurse -Force $work }

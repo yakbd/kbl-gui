@@ -27,7 +27,7 @@ Dialog {
                     font.weight: Font.DemiBold
                 }
                 Label {
-                    text: qsTr("Version %1 (preview)").arg(appSettings.version)
+                    text: qsTr("Version %1").arg(appSettings.version)
                     color: Ui.subtle
                 }
             }

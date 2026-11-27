@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 3.25)
 project(yakbd-gui VERSION 0.1.0 LANGUAGES CXX)
 
+# The full version, with a pre-release part CMake's VERSION cannot hold (0.1.0-preview.1). The release workflow sets it;
+# local builds are "-dev". About, --version, package file names and release notes use it.
+set(YAKBD_GUI_VERSION_FULL "${PROJECT_VERSION}-dev" CACHE STRING "Full version of the editor")
+if(NOT YAKBD_GUI_VERSION_FULL MATCHES "^${PROJECT_VERSION}(-[0-9A-Za-z.]+)?$")
+  message(FATAL_ERROR "YAKBD_GUI_VERSION_FULL ${YAKBD_GUI_VERSION_FULL} does not start with ${PROJECT_VERSION}")
+endif()
+
 if(WIN32)
   # Windows packages are one flat folder: the exe, Qt DLLs, plugins/ and qml/ beside it (and yakbd.exe). Set
   # before Qt's project setup, which records the install directories for its deployment script.
@@ -28,7 +35,7 @@ add_library(kblcore STATIC
 )
 target_include_directories(kblcore PUBLIC src)
 target_link_libraries(kblcore PUBLIC Qt6::Core Qt6::Gui Qt6::Qml Qt6::QuickControls2)
-target_compile_definitions(kblcore PUBLIC YAKBD_GUI_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(kblcore PUBLIC YAKBD_GUI_VERSION="${YAKBD_GUI_VERSION_FULL}")
 
 add_subdirectory(qml)
 
@@ -39,6 +46,7 @@ set_target_properties(yakbd-gui PROPERTIES
   MACOSX_BUNDLE_GUI_IDENTIFIER "io.github.yakbd.gui"
   MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
   MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+  MACOSX_BUNDLE_INFO_STRING "YAKBD Editor ${YAKBD_GUI_VERSION_FULL}"  # the short version must be numbers only
   MACOSX_BUNDLE_ICON_FILE "yakbd.icns"
 )
 if(APPLE)

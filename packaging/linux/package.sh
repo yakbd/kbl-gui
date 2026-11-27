@@ -15,7 +15,7 @@ for doc in LICENSE NOTICE; do
 done
 mkdir -p "$out"
 out=$(cd "$out" && pwd)
-ver=$(sed -n 's/^CMAKE_PROJECT_VERSION:STATIC=//p' "$build/CMakeCache.txt")
+ver=$(sed -n "s/^YAKBD_GUI_VERSION_FULL:STRING=//p" "$build/CMakeCache.txt")
 arch=x86_64
 name="yakbd-gui-$ver-linux-$arch"
 tmpdir="$out/.work"

@@ -6,7 +6,7 @@ key types, edit dead keys, metadata and the Windows build choices. Checking, con
 [`yakbd` command-line tool](https://github.com/yakbd/yakbd-cli), which ships with the editor: the editor never
 makes a Windows decision itself.
 
-**Status: prototype.** Built and tested on Linux, Windows and macOS (CI), and in a Windows 11 guest; what is
+**Status: preview** (first release 0.1.0-preview.1). Built and tested on Linux, Windows and macOS (CI), and in a Windows 11 guest; what is
 still open is in [VERIFIED.md](VERIFIED.md).
 
 ## What it does
@@ -34,7 +34,9 @@ needs yakbd 0.1 or a later 0.x release.
 
 ## Install
 
-Packages are built by the `Packages` workflow; there is no published release yet.
+Download from the [releases](https://github.com/yakbd/kbl-gui/releases) of this repository (made by the `Packages`
+workflow; each file has a `SHA256SUMS` line and a build provenance attestation: `gh attestation verify <file> -R
+yakbd/kbl-gui`).
 
 - **Windows** (x64): `yakbd-setup.exe` is the yakbd tool's own installer carrying the editor: it installs the
   editor and `yakbd.exe` into one folder and replaces a CLI-only install in place (and the other way round). It

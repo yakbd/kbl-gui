@@ -10,7 +10,7 @@ arm64=$3
 clidocs=${5:-$(dirname "$amd64")}
 mkdir -p "$4"
 out=$(cd "$4" && pwd)
-ver=$(sed -n 's/^CMAKE_PROJECT_VERSION:STATIC=//p' "$build/CMakeCache.txt")
+ver=$(sed -n "s/^YAKBD_GUI_VERSION_FULL:STRING=//p" "$build/CMakeCache.txt")
 name="yakbd-gui-$ver-macos-universal"
 tmpdir="$out/.work"
 rm -rf "$tmpdir"
