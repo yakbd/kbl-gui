@@ -5,6 +5,17 @@ run). The sections below were checked on 0.1.0 development builds in the develop
 (date and runner image given). From the first release, 0.1.0-preview.1, runs of this repository's workflows are
 cited by their id (https://github.com/yakbd/kbl-gui/actions/runs/<id>).
 
+## Release 0.1.0-preview.1
+
+| check | where | result |
+|---|---|---|
+| build and all tests on Linux (Ubuntu 22.04 container), Windows (`windows-2025`) and macOS (`macos-15`); each package's `--self-test` reports `YAKBD Editor 0.1.0-preview.1` and validates with the bundled yakbd 0.1.0-preview.2; Windows and macOS window grabs light and dark; `yakbd-setup.exe` carries the released `yakbd.exe` (SHA-256 compared) | Packages run [46003103416](https://github.com/yakbd/kbl-gui/actions/runs/46003103416), 2026-11-27 | pass |
+| the release files: `SHA256SUMS`, a build provenance attestation for every file (`gh attestation verify`), the editor's LICENSE, NOTICE and licence texts and the CLI's LICENSE and NOTICE in the zip, tarball, AppImage and `.dmg` (the setup's payload is the zip's folder) | the draft release, checked after download | pass |
+| a rehearsal of the same workflow (`0.1.0-rehearsal.1`, draft and tag deleted afterwards) | Packages run [46002079436](https://github.com/yakbd/kbl-gui/actions/runs/46002079436) | pass |
+
+The release's `yakbd-setup.exe` in the Windows 11 guest (install, swap with the CLI-only setup, uninstall) is
+checked before the release is published; its result is added here.
+
 ## Linux
 
 | check | where | result |
