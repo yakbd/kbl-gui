@@ -126,6 +126,86 @@ private slots:
         settings->setAppearance(QStringLiteral("system"));
     }
 
+    // The layer row shows whole tabs only, at narrow window widths too: every shown tab lies inside the row, the
+    // selected one is shown, and the arrows step through all of them without ever cutting one.
+    void layerRowShowsWholeTabs()
+    {
+        QMetaObject::invokeMethod(win, "openPath", Q_ARG(QVariant, data("latin-altgr-deadkeys.kbl.json")));
+        QVERIFY(doc->loaded());
+        auto *page = win->findChild<QQuickItem *>(QStringLiteral("keyboardPage"));
+        auto *strip = win->findChild<QQuickItem *>(QStringLiteral("layerRow"));
+        QVERIFY(page && strip);
+        const int layers = page->property("layerList").toList().size();
+        QVERIFY(layers >= 5);
+        const int oldWidth = win->width();
+        // The tabs by the visual tree (a Repeater's delegates are not QObject children of the row).
+        const auto tabsOf = [](QQuickItem *root) {
+            QList<QQuickItem *> found, todo{root};
+            while (!todo.isEmpty()) {
+                QQuickItem *it = todo.takeFirst();
+                if (it->objectName() == QLatin1String("layerTab"))
+                    found << it;
+                todo << it->childItems();
+            }
+            return found;
+        };
+        const auto check = [&](const QString &where) {
+            int shown = 0;
+            bool selectedShown = false;
+            const int sel = page->property("layerIndex").toInt();
+            const auto tabs = tabsOf(strip);
+            for (QQuickItem *t : tabs) {
+                if (!t->isVisible())
+                    continue;
+                ++shown;
+                const QRectF r = t->mapRectToItem(strip, QRectF(0, 0, t->width(), t->height()));
+                if (r.left() < -0.5 || r.right() > strip->width() + 0.5)
+                    return QStringLiteral("%1: tab '%2' at %3..%4 of a row %5 wide").arg(where, t->property("text").toString())
+                        .arg(r.left()).arg(r.right()).arg(strip->width());
+                if (t->property("checked").toBool())
+                    selectedShown = true;
+            }
+            if (shown == 0)
+                return QStringLiteral("%1: no tab shown").arg(where);
+            if (!selectedShown)
+                return QStringLiteral("%1: the selected layer %2 is not shown").arg(where).arg(sel);
+            return QString();
+        };
+        for (int width : {760, 992, 1360}) {
+            win->setWidth(width);
+            QTest::qWait(50);
+            if (width < 1000) // this file's layers do not fit there: the case under test
+                QVERIFY2(strip->property("overflows").toBool(), qPrintable(QStringLiteral("width %1 does not overflow").arg(width)));
+            for (int i = 0; i < layers; ++i) {
+                page->setProperty("layerIndex", i);
+                QTest::qWait(50);
+                const QString where = QStringLiteral("width %1, layer %2").arg(win->width()).arg(i);
+                const QString problem = check(where);
+                QVERIFY2(problem.isEmpty(), qPrintable(problem));
+            }
+            // Stepping with the arrows from the start to the end: each step shows whole tabs.
+            if (strip->property("overflows").toBool()) {
+                page->setProperty("layerIndex", 0);
+                QTest::qWait(50);
+                for (int s = 0; s < layers; ++s) {
+                    QMetaObject::invokeMethod(strip, "step", Q_ARG(QVariant, 1));
+                    QTest::qWait(20);
+                    const auto tabs = tabsOf(strip);
+                    for (QQuickItem *t : tabs) {
+                        if (!t->isVisible())
+                            continue;
+                        const QRectF r = t->mapRectToItem(strip, QRectF(0, 0, t->width(), t->height()));
+                        QVERIFY2(r.left() >= -0.5 && r.right() <= strip->width() + 0.5,
+                                 qPrintable(QStringLiteral("width %1, step %2: tab '%3' cut").arg(win->width()).arg(s)
+                                                .arg(t->property("text").toString())));
+                    }
+                }
+                QCOMPARE(strip->property("last").toInt(), layers - 1);
+            }
+        }
+        win->setWidth(oldWidth);
+    }
+
     void cleanupTestCase()
     {
         delete engine; // before the objects its bindings read

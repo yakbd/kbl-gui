@@ -49,80 +49,162 @@ Item {
             Layout.fillHeight: page.wide
             spacing: Ui.gap
 
-            // Layers: one row. When they do not fit, the row scrolls (wheel or drag) and a menu lists them all.
+            // Layers: one row of whole tabs. When they do not fit, the row shows the tabs from `first` on that fit,
+            // arrows step one tab (greyed at the end reached), the wheel steps too, and a menu lists them all. No tab
+            // is ever cut: the strip lays out only the tabs it shows; a selected tab wider than the strip is elided.
             RowLayout {
+                id: layerBar
                 Layout.fillWidth: true
                 spacing: Ui.gap
                 Label {
+                    id: layerLabel
                     text: qsTr("Layer")
                     color: Ui.subtle
                 }
-                // When the row overflows, arrows show that layers lie beyond either end (greyed at the end reached).
                 ToolButton {
                     objectName: "layerRowBack"
-                    visible: layerRow.overflows
-                    enabled: !layerRow.atXBeginning
-                    text: "\u2039"
+                    visible: layerStrip.overflows
+                    enabled: layerStrip.first > 0
+                    text: "‹"
                     implicitWidth: 24
-                    onClicked: layerRow.scrollBy(-1)
+                    onClicked: layerStrip.step(-1)
                     Accessible.name: qsTr("Earlier layers")
                 }
-                ListView {
-                    id: layerRow
+                Item {
+                    id: layerStrip
                     objectName: "layerRow"
                     Layout.fillWidth: true
-                    Layout.preferredHeight: contentItem.childrenRect.height > 0 ? contentItem.childrenRect.height : 32
+                    Layout.preferredHeight: tabs.implicitHeight > 0 ? tabs.implicitHeight : 32
                     implicitWidth: 0
-                    orientation: ListView.Horizontal
-                    spacing: 4
                     clip: true
-                    boundsBehavior: Flickable.StopAtBounds
-                    model: page.layerList
-                    currentIndex: keyboard.layerIndex
-                    highlightFollowsCurrentItem: false
-                    onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
-                    onWidthChanged: positionViewAtIndex(currentIndex, ListView.Contain)
-                    onCountChanged: positionViewAtIndex(currentIndex, ListView.Contain)
-                    readonly property bool overflows: contentWidth > width + 1
-                    function scrollBy(step) {
-                        let i = step < 0 ? indexAt(contentX + 1, 1) : indexAt(contentX + width - 2, 1)
-                        if (i < 0)
-                            i = step < 0 ? indexAt(contentX + spacing + 1, 1) : indexAt(contentX + width - spacing - 2, 1)
-                        positionViewAtIndex(Math.max(0, Math.min(count - 1, i + step)), step < 0 ? ListView.Beginning : ListView.End)
+                    readonly property int count: tabRepeater.count
+                    readonly property int spacing: 4
+                    property int first: 0
+                    property int last: count - 1
+                    // Overflow from the bar's own width (not the strip's, which the arrows change): all tabs against
+                    // the room the bar has without arrows and menu.
+                    readonly property real room: layerBar.width - layerLabel.width - layerBar.spacing
+                    property real total: 0
+                    readonly property bool overflows: total > room + 0.5
+                    function widthOf(i) {
+                        const t = tabRepeater.itemAt(i)
+                        return t ? t.implicitWidth : 0
                     }
-                    delegate: Button {
-                        required property var modelData
-                        checkable: true
-                        checked: modelData.index === keyboard.layerIndex
-                        flat: !checked
-                        text: modelData.label
-                        onClicked: keyboard.layerIndex = modelData.index
-                        ToolTip.visible: hovered
-                        ToolTip.delay: 500
-                        ToolTip.text: (modelData.id !== "" ? qsTr("Layer “%1”: ").arg(modelData.id) : "")
-                                      + qsTr("%1, %2 binding(s)").arg(modelData.modifiers).arg(modelData.count)
-                        Accessible.name: qsTr("Layer %1").arg(modelData.label)
+                    // The last index from `from` on whose tabs fit whole (at least `from` itself).
+                    function lastFrom(from) {
+                        let used = 0, i = from
+                        for (; i < count; ++i) {
+                            const w = widthOf(i) + (i > from ? spacing : 0)
+                            if (i > from && used + w > width)
+                                break
+                            used += w
+                        }
+                        return Math.max(from, i - 1)
+                    }
+                    // The first index from which `to` is the last tab that fits.
+                    function firstTo(to) {
+                        let used = 0, i = to
+                        for (; i >= 0; --i) {
+                            const w = widthOf(i) + (i < to ? spacing : 0)
+                            if (i < to && used + w > width)
+                                break
+                            used += w
+                        }
+                        return Math.min(to, i + 1)
+                    }
+                    function fit() {
+                        let sum = 0
+                        for (let i = 0; i < count; ++i)
+                            sum += widthOf(i) + (i > 0 ? spacing : 0)
+                        total = sum
+                        if (!overflows) {
+                            first = 0
+                            last = count - 1
+                            return
+                        }
+                        first = Math.max(0, Math.min(first, count - 1))
+                        // Show as many as fit from the end too, then keep the selected tab in view.
+                        first = Math.min(first, firstTo(count - 1))
+                        const sel = Math.max(0, Math.min(keyboard.layerIndex, count - 1))
+                        if (sel < first)
+                            first = sel
+                        last = lastFrom(first)
+                        if (sel > last) {
+                            first = firstTo(sel)
+                            last = lastFrom(first)
+                        }
+                    }
+                    function step(d) {
+                        if (d < 0 && first > 0)
+                            first -= 1
+                        else if (d > 0 && last < count - 1)
+                            first = Math.min(first + 1, firstTo(count - 1))
+                        last = lastFrom(first)
+                    }
+                    onWidthChanged: Qt.callLater(fit)
+                    onRoomChanged: Qt.callLater(fit)
+                    onCountChanged: Qt.callLater(fit)
+                    Connections {
+                        target: keyboard
+                        function onLayerIndexChanged() { Qt.callLater(layerStrip.fit) }
+                    }
+                    Row {
+                        id: tabs
+                        spacing: layerStrip.spacing
+                        Repeater {
+                            id: tabRepeater
+                            model: page.layerList
+                            delegate: Button {
+                                id: tab
+                                objectName: "layerTab"
+                                required property var modelData
+                                required property int index
+                                visible: index >= layerStrip.first && index <= layerStrip.last
+                                checkable: true
+                                checked: modelData.index === keyboard.layerIndex
+                                flat: !checked
+                                // implicitWidth is the whole label's; a tab alone and wider than the strip shows its
+                                // label elided.
+                                readonly property bool squeezed: implicitWidth > layerStrip.width && layerStrip.width > 0
+                                width: squeezed ? layerStrip.width : implicitWidth
+                                TextMetrics {
+                                    id: fullLabel
+                                    font: tab.font
+                                    text: tab.modelData.label
+                                    elide: Text.ElideRight
+                                    elideWidth: Math.max(0, layerStrip.width - tab.leftPadding - tab.rightPadding)
+                                }
+                                text: squeezed ? fullLabel.elidedText : modelData.label
+                                onImplicitWidthChanged: Qt.callLater(layerStrip.fit)
+                                onClicked: keyboard.layerIndex = modelData.index
+                                ToolTip.visible: hovered
+                                ToolTip.delay: 500
+                                ToolTip.text: (modelData.id !== "" ? qsTr("Layer “%1”: ").arg(modelData.id) : "")
+                                              + qsTr("%1, %2 binding(s)").arg(modelData.modifiers).arg(modelData.count)
+                                Accessible.name: qsTr("Layer %1").arg(modelData.label)
+                            }
+                        }
                     }
                     WheelHandler {
                         acceptedDevices: PointerDevice.Mouse
                         onWheel: function (e) {
-                            layerRow.contentX = Math.max(0, Math.min(layerRow.contentWidth - layerRow.width,
-                                                                     layerRow.contentX - e.angleDelta.y))
+                            if (e.angleDelta.y !== 0 || e.angleDelta.x !== 0)
+                                layerStrip.step((e.angleDelta.y || e.angleDelta.x) > 0 ? -1 : 1)
                         }
                     }
                 }
                 ToolButton {
                     objectName: "layerRowForward"
-                    visible: layerRow.overflows
-                    enabled: !layerRow.atXEnd
-                    text: "\u203a"
+                    visible: layerStrip.overflows
+                    enabled: layerStrip.last < layerStrip.count - 1
+                    text: "›"
                     implicitWidth: 24
-                    onClicked: layerRow.scrollBy(1)
+                    onClicked: layerStrip.step(1)
                     Accessible.name: qsTr("Later layers")
                 }
                 ToolButton {
                     id: layerMenuButton
-                    visible: layerRow.overflows
+                    visible: layerStrip.overflows
                     text: qsTr("All Layers…")
                     onClicked: layerMenu.popup(layerMenuButton, 0, layerMenuButton.height)
                     Accessible.name: qsTr("All layers")
