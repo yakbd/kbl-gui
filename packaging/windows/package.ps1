@@ -30,18 +30,40 @@ if (Test-Path (Join-Path $stage "bin/Qt6Core.dll")) {
 if (-not (Test-Path (Join-Path $stage "Qt6Core.dll")) -or -not (Test-Path (Join-Path $stage "yakbd-gui.exe"))) {
   throw "the install is not flat: yakbd-gui.exe and Qt6Core.dll must be in one folder"
 }
-foreach ($style in "Material", "Imagine", "Universal") {
+# Only what the editor uses. It runs the FluentWinUI3 style (which builds on Fusion and Basic); Qt Quick draws with
+# Direct3D 11, whose shader compiler (d3dcompiler_47.dll) is part of Windows 10 and later; it has no network code
+# and loads only SVG and ICO images.
+foreach ($style in "Material", "Imagine", "Universal", "Windows", "iOS") {
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path $stage "qml/QtQuick/Controls/$style")
   Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $stage "Qt6QuickControls2$style*.dll")
 }
-Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path $stage "qml/QtTest"), (Join-Path $stage "plugins/qmltooling")
-Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $stage "Qt6Test.dll"), (Join-Path $stage "Qt6QuickTest.dll")
+$unused = "qml/QtTest", "qml/QtQuick/NativeStyle", "Qt6QuickNativeStyle.dll", "Qt6Test.dll", "Qt6QuickTest.dll",
+  "plugins/qmltooling", "plugins/tls", "plugins/networkinformation", "plugins/generic",
+  "plugins/imageformats/qjpeg.dll", "plugins/imageformats/qgif.dll",
+  "dxcompiler.dll", "dxil.dll", "d3dcompiler_47.dll", "opengl32sw.dll"
+foreach ($u in $unused) { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path $stage $u) }
 
-# 2. The Visual C++ runtime DLLs, app-local (Microsoft's redistributable files, from the build's own toolset).
+# 2. The Visual C++ runtime DLLs the payload imports, app-local (Microsoft's redistributable files, from the build's
+#    own toolset); dumpbin lists every import, so a DLL nobody imports is not shipped.
 $crt = Get-ChildItem -Directory (Join-Path $VcRedist $Arch) -Filter "Microsoft.VC*.CRT" | Select-Object -First 1
 if (-not $crt) { throw "no Visual C++ runtime in $VcRedist\$Arch (run in a Visual Studio developer shell)" }
-Copy-Item (Join-Path $crt.FullName "*.dll") $stage
-Write-Host "Visual C++ runtime from $($crt.FullName): $((Get-ChildItem (Join-Path $crt.FullName '*.dll')).Name -join ', ')"
+$available = @{}
+Get-ChildItem (Join-Path $crt.FullName "*.dll") | ForEach-Object { $available[$_.Name.ToLower()] = $_.FullName }
+$needed = @{}
+$queue = [System.Collections.Generic.Queue[string]]::new()
+Get-ChildItem -Recurse -File $stage -Include *.dll, *.exe | ForEach-Object { $queue.Enqueue($_.FullName) }
+while ($queue.Count -gt 0) {
+  $file = $queue.Dequeue()
+  foreach ($line in (& dumpbin /nologo /dependents $file)) {
+    $dll = $line.Trim().ToLower()
+    if ($available.ContainsKey($dll) -and -not $needed.ContainsKey($dll)) {
+      $needed[$dll] = $true
+      $queue.Enqueue($available[$dll])
+    }
+  }
+}
+foreach ($dll in $needed.Keys) { Copy-Item $available[$dll] $stage }
+Write-Host "Visual C++ runtime from $($crt.FullName): $(($needed.Keys | Sort-Object) -join ', ')"
 
 # 3. Licences: ours, Qt's (LGPL) and the other texts NOTICE names, and the CLI's own LICENSE and NOTICE (they go next
 #    to yakbd.exe when the setup installs the payload).

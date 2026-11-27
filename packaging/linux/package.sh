@@ -26,9 +26,9 @@ mkdir -p "$tmpdir"
 # 1. Install with Qt's deployment script (Qt libraries, plugins and QML modules next to the binary).
 stage="$tmpdir/$name"
 cmake --install "$build" --prefix "$stage" >/dev/null
-# Qt deploys every Qt Quick Controls style and the test libraries it finds; the editor uses Fusion (and the
-# FluentWinUI3 style can be chosen with QT_QUICK_CONTROLS_STYLE), so the others are left out.
-for style in Material Imagine Universal; do
+# Qt deploys every Qt Quick Controls style, the test libraries and plugins it finds; the editor uses only Fusion
+# (on Basic), has no network code and loads only SVG and ICO images, so the rest is left out.
+for style in Material Imagine Universal FluentWinUI3; do
   rm -rf "$stage/qml/QtQuick/Controls/$style"
   rm -f "$stage"/lib/libQt6QuickControls2"$style"*.so*
 done
@@ -36,10 +36,12 @@ rm -rf "$stage/qml/QtTest"
 rm -f "$stage"/lib/libQt6Test.so* "$stage"/lib/libQt6QuickTest.so*
 # The deployment script brings only the xcb platform plugin: add Wayland, and offscreen for headless checks.
 qtprefix=$(cd "$(sed -n "s/^Qt6_DIR:PATH=//p" "$build/CMakeCache.txt")/../../.." && pwd)
-for p in libqwayland.so libqoffscreen.so libqminimal.so; do
+for p in libqwayland.so libqoffscreen.so; do
   cp "$qtprefix/plugins/platforms/$p" "$stage/plugins/platforms/"
 done
-rm -rf "$stage/plugins/qmltooling" "$stage/plugins/egldeviceintegrations"
+rm -rf "$stage/plugins/qmltooling" "$stage/plugins/egldeviceintegrations" "$stage/plugins/tls" \
+  "$stage/plugins/networkinformation" "$stage/plugins/generic"
+rm -f "$stage/plugins/imageformats/libqjpeg.so" "$stage/plugins/imageformats/libqgif.so"
 rm -f "$stage"/lib/libQt6EglFS*.so* "$stage"/lib/libQt6EglFs*.so*
 install -m 0755 "$cli" "$stage/bin/yakbd"
 install -m 0644 "$clidocs/yakbd-cli-LICENSE" "$clidocs/yakbd-cli-NOTICE" "$stage/bin/"
@@ -85,6 +87,7 @@ exec "$here/usr/bin/yakbd-gui" "$@"
 EOF
 chmod +x "$appdir/AppRun"
 ARCH=$arch "$tools/appimagetool" --appimage-extract-and-run --runtime-file "$tools/runtime" --no-appstream \
+  --mksquashfs-opt -b --mksquashfs-opt 1M --mksquashfs-opt -Xcompression-level --mksquashfs-opt 19 \
   "$appdir" "$out/YAKBD-Editor-$ver-x86_64.AppImage"
 
 rm -rf "$tmpdir"

@@ -23,14 +23,14 @@ package of the editor contains: open an issue in this repository or contact the 
 https://github.com/yakbd.
 
 Qt modules shipped with the editor (all "LGPL-3.0-only" options of Qt's dual licensing, as stated in the software
-bill of materials inside each Qt archive): Qt Core, Qt Gui, Qt DBus (Linux), Qt Network, Qt OpenGL, Qt Svg, Qt Qml,
-Qt QmlMeta, Qt QmlModels, Qt QmlWorkerScript, Qt Quick, Qt Quick Layouts, Qt Quick Shapes, Qt Quick Effects,
-Qt Quick Templates 2, Qt Quick Controls 2 (with the Basic, Fusion and FluentWinUI3 styles; on Windows also the
-Windows style and Qt Quick Native Style, on macOS the macOS style and Qt Quick Native Style), Qt Quick Dialogs 2
-(with its utilities and Qt Quick implementation), Qt Labs FolderListModel, and on Linux Qt Wayland Client,
-Qt WlShellIntegration and Qt XcbQpa, with the Qt plugins they load (platforms, platform themes, image formats, icon
-engines, TLS, Wayland and xcb integrations). The Qt tools used to build the editor (moc, rcc, qmlcachegen and
-others) are covered by the GPL with the Qt GPL exception, which covers their output.
+bill of materials inside each Qt archive): Qt Core, Qt Gui, Qt DBus (Linux, macOS), Qt Network, Qt OpenGL, Qt Svg,
+Qt Qml, Qt QmlMeta, Qt QmlModels, Qt QmlWorkerScript, Qt Quick, Qt Quick Layouts, Qt Quick Shapes, Qt Quick Effects,
+Qt Quick Templates 2, Qt Quick Controls 2 (with the Basic and Fusion styles; on Windows also FluentWinUI3, on macOS
+also the macOS style, Qt Quick Native Style and Qt Widgets, which that style draws with), Qt Quick Dialogs 2 (with
+its utilities and Qt Quick implementation), Qt Labs FolderListModel, and on Linux Qt Wayland Client,
+Qt WlShellIntegration and Qt XcbQpa, with the Qt plugins they load (platforms, platform themes, SVG and ICO image
+formats, the SVG icon engine, Wayland and xcb integrations). The Qt tools used to build the editor (moc, rcc,
+qmlcachegen and others) are covered by the GPL with the Qt GPL exception, which covers their output.
 
 Qt bundles third-party code under its own licences; the list is in each Qt module's documentation
 (https://doc.qt.io/qt-6/licenses-used-in-qt.html) and in the SBOM files of the Qt archives.

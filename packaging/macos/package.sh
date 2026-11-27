@@ -20,12 +20,17 @@ mkdir -p "$tmpdir/stage"
 cmake --install "$build" --prefix "$tmpdir/stage" >/dev/null
 app="$tmpdir/stage/YAKBD Editor.app"
 [ -d "$app" ] || { echo "no YAKBD Editor.app in the install"; exit 1; }
-for style in Material Imagine Universal; do
+# Only what the editor uses: the macOS style (on Fusion, Basic and Qt Quick Native Style); no network code; SVG and
+# ICO images only.
+for style in Material Imagine Universal FluentWinUI3 Windows iOS; do
   rm -rf "$app/Contents/Resources/qml/QtQuick/Controls/$style"
-  rm -rf "$app/Contents/Frameworks/QtQuickControls2$style.framework"
+  rm -rf "$app/Contents/Frameworks/QtQuickControls2$style".framework "$app/Contents/Frameworks/QtQuickControls2$style"StyleImpl.framework
 done
 rm -rf "$app/Contents/Resources/qml/QtTest" "$app/Contents/Frameworks/QtTest.framework" \
-       "$app/Contents/Frameworks/QtQuickTest.framework" "$app/Contents/PlugIns/qmltooling"
+       "$app/Contents/Frameworks/QtQuickTest.framework" "$app/Contents/PlugIns/qmltooling" \
+       "$app/Contents/PlugIns/tls" "$app/Contents/PlugIns/networkinformation" "$app/Contents/PlugIns/generic" \
+       "$app/Contents/PlugIns/imageformats/libqjpeg.dylib" "$app/Contents/PlugIns/imageformats/libqgif.dylib" \
+       "$app/Contents/Frameworks/QtQuickControls2IOS.framework" "$app/Contents/Frameworks/QtQuickControls2IOSStyleImpl.framework"
 
 # 2. The CLI, universal, next to the editor's executable.
 lipo -create "$amd64" "$arm64" -output "$app/Contents/MacOS/yakbd"
@@ -48,7 +53,7 @@ dmgdir="$tmpdir/dmg"
 mkdir -p "$dmgdir"
 cp -R "$app" "$dmgdir/"
 ln -s /Applications "$dmgdir/Applications"
-hdiutil create -volname "YAKBD Editor $ver" -srcfolder "$dmgdir" -ov -format UDZO "$out/$name.dmg"
+hdiutil create -volname "YAKBD Editor $ver" -srcfolder "$dmgdir" -ov -format ULMO "$out/$name.dmg"
 rm -rf "$tmpdir"
 (cd "$out" && shasum -a 256 "$name.dmg" > "$name.SHA256SUMS")
 ls -l "$out"
