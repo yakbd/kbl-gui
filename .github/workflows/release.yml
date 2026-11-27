@@ -184,6 +184,7 @@ jobs:
           ctest --test-dir build --output-on-failure --timeout 300
           # A test failure fails the job at the end, after the payload and its own checks (they show more).
           "TESTS_EXIT=$LASTEXITCODE" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          if ($LASTEXITCODE -ne 0) { Get-Content build/tests/tst_window.txt -ErrorAction SilentlyContinue }
           pwsh packaging/windows/package.ps1 -Build build -Arch ${{ matrix.arch }} -Out dist
           if ($LASTEXITCODE -ne 0) { throw "payload failed" }
       # Signing (later, SignPath): sign dist/payload-*/yakbd-gui.exe here, before the setup is made.

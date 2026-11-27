@@ -51,7 +51,8 @@ endif()
 # The main window with the platform's standard shortcuts (⌘ on macOS) and the live appearance switch.
 qt_add_executable(tst_window tst_window.cpp)
 target_link_libraries(tst_window PRIVATE kblcore Qt6::Test Qt6::Quick Qt6::QuickControls2 yakbduiplugin)
-add_test(NAME tst_window COMMAND tst_window)
+# The results also go to a file: Windows does not hand a GUI program's output to ctest.
+add_test(NAME tst_window COMMAND tst_window -o ${CMAKE_CURRENT_BINARY_DIR}/tst_window.txt,txt -o -,txt)
 if(APPLE OR WIN32)
   # The native platform (cocoa, windows): only there do the standard keys become the platform's shortcuts (⌘ on
   # macOS) and does the colour scheme switch.
@@ -65,10 +66,3 @@ if(APPLE OR WIN32)
 else()
   set_tests_properties(tst_window PROPERTIES ENVIRONMENT "${test_env}")
 endif()
-# Console programs on Windows (qt_standard_project_setup makes executables GUI programs, whose output ctest cannot
-# show).
-foreach(t tst_jsontree tst_document tst_cli tst_qml tst_window)
-  if(TARGET ${t})
-    set_target_properties(${t} PROPERTIES WIN32_EXECUTABLE OFF)
-  endif()
-endforeach()
