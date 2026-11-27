@@ -1,10 +1,12 @@
-# Downloads one yakbd CLI binary from a tagged yakbd-cli release and checks it against the release's SHA256SUMS.
+# Downloads the yakbd CLI of a tagged yakbd-cli release (0.1.0-preview.3 or later) and checks it against the release's
+# SHA256SUMS: the archive for one platform, with yakbd, LICENSE and NOTICE.
 #
-#   cmake -DASSET=linux-amd64 -DDEST=/path/to/dir [-DTAG=v0.1.0-preview.1] [-DSUMS_SHA256=<hash>] -P tools/fetch-cli.cmake
+#   cmake -DASSET=linux-amd64 -DDEST=/path/to/dir [-DTAG=v0.1.0-preview.3] [-DSUMS_SHA256=<hash>] -P tools/fetch-cli.cmake
 #
-# ASSET is linux-amd64, linux-arm64, darwin-amd64, darwin-arm64, windows-x64, windows-arm64 or windows-x86.
+# ASSET is linux-amd64, linux-arm64 or macos (one universal binary). The release has no separate Windows yakbd.exe:
+# packaging/cli-release.sh rebuilds it from the tag and checks it against the release's yakbd-cli-setup.exe.
 # Without TAG the pin in tools/cli-pins.cmake is used, and SHA256SUMS itself must then match the pinned hash.
-# The result is DEST/yakbd (DEST/yakbd.exe for Windows), plus DEST/yakbd-cli-LICENSE and DEST/yakbd-cli-NOTICE.
+# The result is DEST/yakbd, DEST/yakbd-cli-LICENSE and DEST/yakbd-cli-NOTICE.
 
 include("${CMAKE_CURRENT_LIST_DIR}/cli-pins.cmake")
 if(NOT ASSET OR NOT DEST)
@@ -30,10 +32,7 @@ if(NOT code EQUAL 0)
   message(FATAL_ERROR "SHA256SUMS of ${TAG}: ${st}")
 endif()
 
-set(name "yakbd-${version}-${ASSET}")
-if(ASSET MATCHES "^windows-")
-  set(name "${name}.zip")
-endif()
+set(name "yakbd-${version}-${ASSET}.tar.gz")
 file(STRINGS "${work}/SHA256SUMS" lines REGEX "  ${name}$")
 if(NOT lines)
   message(FATAL_ERROR "${name} is not listed in SHA256SUMS of ${TAG}")
@@ -45,23 +44,14 @@ if(NOT code EQUAL 0)
   message(FATAL_ERROR "${name}: ${st}")
 endif()
 
-if(ASSET MATCHES "^windows-")
-  file(ARCHIVE_EXTRACT INPUT "${work}/${name}" DESTINATION "${work}/unzip")
-  file(GLOB_RECURSE exe "${work}/unzip/yakbd.exe")
-  file(COPY_FILE "${exe}" "${DEST}/yakbd.exe")
-else()
-  file(COPY_FILE "${work}/${name}" "${DEST}/yakbd")
-  file(CHMOD "${DEST}/yakbd" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
-       WORLD_READ WORLD_EXECUTE)
-endif()
+file(ARCHIVE_EXTRACT INPUT "${work}/${name}" DESTINATION "${work}/unpacked")
+file(COPY_FILE "${work}/unpacked/yakbd" "${DEST}/yakbd")
+file(CHMOD "${DEST}/yakbd" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
+     WORLD_READ WORLD_EXECUTE)
 file(COPY_FILE "${work}/SHA256SUMS" "${DEST}/yakbd-SHA256SUMS")
-# The CLI's own LICENSE and NOTICE travel with it in every package (from its source at the same tag).
+# The CLI's own LICENSE and NOTICE (in its archive) travel with it in every package.
 foreach(doc LICENSE NOTICE)
-  file(DOWNLOAD "https://raw.githubusercontent.com/yakbd/yakbd-cli/${TAG}/${doc}" "${DEST}/yakbd-cli-${doc}" STATUS st)
-  list(GET st 0 code)
-  if(NOT code EQUAL 0)
-    message(FATAL_ERROR "${doc} of yakbd-cli ${TAG}: ${st}")
-  endif()
+  file(COPY_FILE "${work}/unpacked/${doc}" "${DEST}/yakbd-cli-${doc}")
 endforeach()
 file(REMOVE_RECURSE "${work}")
 message(STATUS "yakbd ${version} (${ASSET}) in ${DEST}, SHA-256 ${sha}")
