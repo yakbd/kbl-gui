@@ -1,0 +1,242 @@
+name: Packages
+
+# Builds the editor's packages with a tagged yakbd-cli release: Linux tarball and AppImage, Windows zip and
+# yakbd-setup.exe (the CLI's installer with the editor as extra payload), macOS .dmg (universal, unsigned).
+# By default the latest tagged CLI release, verified by SHA256SUMS and its build provenance attestation.
+# Windows and macOS jobs are manual to save CI minutes (they are slow): run it when a check or a release needs it.
+# The packages are workflow artifacts; this workflow publishes no release.
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: "Which packages"
+        type: choice
+        options: [all, windows, macos, linux]
+        default: all
+      cli:
+        description: "yakbd-cli release tag (empty: the latest release)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  cli:
+    name: yakbd CLI release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      attestations: read
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WANT: ${{ inputs.cli }}
+        run: |
+          tag="$WANT"
+          if [ -z "$tag" ]; then tag=$(gh release view -R yakbd/yakbd-cli --json tagName -q .tagName); fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "yakbd-cli $tag" >> "$GITHUB_STEP_SUMMARY"
+      - name: Download and verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          mkdir cli && cd cli
+          v=${TAG#v}
+          gh release download "$TAG" -R yakbd/yakbd-cli -p SHA256SUMS \
+            -p "yakbd-$v-linux-amd64" -p "yakbd-$v-darwin-amd64" -p "yakbd-$v-darwin-arm64" -p "yakbd-$v-windows-x64.zip"
+          sha256sum -c --ignore-missing SHA256SUMS
+          [ "$(sha256sum -c --ignore-missing SHA256SUMS | grep -c ': OK$')" = 4 ]
+          for f in yakbd-$v-*; do gh attestation verify "$f" -R yakbd/yakbd-cli; done
+          # The CLI's LICENSE and NOTICE from its source at the tag: every package carries them next to the CLI.
+          for doc in LICENSE NOTICE; do
+            curl -fsSL -o "yakbd-cli-$doc" "https://raw.githubusercontent.com/yakbd/yakbd-cli/$TAG/$doc"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cli
+          path: cli/
+          retention-days: 3
+
+  linux:
+    needs: cli
+    if: inputs.platforms == 'all' || inputs.platforms == 'linux'
+    runs-on: ubuntu-24.04
+    container: ubuntu:22.04
+    timeout-minutes: 40
+    steps:
+      - run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates
+      - uses: actions/checkout@v4
+      - run: sh tools/linux-build-deps.sh
+      - uses: actions/download-artifact@v4
+        with:
+          name: cli
+          path: cli
+      - uses: actions/cache@v4
+        with:
+          path: /opt/qt-downloads
+          key: qt-linux_gcc_64-${{ hashFiles('tools/qt-pins.cmake') }}
+      - run: cmake -DPLATFORM=linux_gcc_64 -DDEST=/opt/qt -DDOWNLOADS=/opt/qt-downloads -P tools/getqt.cmake
+      - name: Build and test
+        env:
+          YAKBD_REQUIRE_CLI: 1
+          LANG: C.UTF-8
+          TAG: ${{ needs.cli.outputs.tag }}
+        run: |
+          cli=$PWD/cli/yakbd-${TAG#v}-linux-amd64
+          chmod +x "$cli"
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/qt -DYAKBD_CLI="$cli"
+          cmake --build build
+          ctest --test-dir build --output-on-failure --timeout 300
+          sh packaging/linux/package.sh build "$cli" dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-linux
+          path: dist/*
+          retention-days: 5
+
+  windows:
+    needs: cli
+    if: inputs.platforms == 'all' || inputs.platforms == 'windows'
+    runs-on: windows-2025
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: cli
+          path: cli
+      - name: CLI source at the tag (for its installer machinery)
+        run: git -c core.autocrlf=false clone --depth 1 --branch "${{ needs.cli.outputs.tag }}" https://github.com/yakbd/yakbd-cli cli-src
+      - name: Go version of the CLI release (its installer build is reproducible only with that exact Go)
+        id: gover
+        run: |
+          "go=$((Get-Content cli-src/installer/stub-386.version).Trim().TrimStart('go'))" | Out-File -Append -Encoding utf8 $env:GITHUB_OUTPUT
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ steps.gover.outputs.go }}
+          cache: false
+      - uses: actions/cache@v4
+        with:
+          path: C:\qt-downloads
+          key: qt-win64_mingw-${{ hashFiles('tools/qt-pins.cmake') }}
+      - name: Qt and its MinGW toolchain (pinned archives)
+        run: |
+          cmake -DPLATFORM=win64_mingw -DDEST=C:/qt -DDOWNLOADS=C:/qt-downloads -P tools/getqt.cmake
+          cmake -DPLATFORM=mingw_toolchain -DDEST=C:/mingw -DDOWNLOADS=C:/qt-downloads -P tools/getqt.cmake
+          $gpp = Get-ChildItem -Recurse C:/mingw -Filter g++.exe | Select-Object -First 1
+          "$($gpp.DirectoryName)" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+      - name: Build and test
+        env:
+          YAKBD_REQUIRE_CLI: 1
+          TAG: ${{ needs.cli.outputs.tag }}
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          $v = $env:TAG.TrimStart("v")
+          Expand-Archive "cli/yakbd-$v-windows-x64.zip" cli/x64
+          $cli = (Get-ChildItem -Recurse cli/x64 -Filter yakbd.exe | Select-Object -First 1).FullName
+          "CLI=$cli" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=C:/qt -DYAKBD_CLI="$cli"
+          cmake --build build --parallel
+          $env:PATH = "C:/qt/bin;$env:PATH"
+          ctest --test-dir build --output-on-failure -V --timeout 300
+          # A test failure fails the job at the end, after the package and its own checks (they show more).
+          "TESTS_EXIT=$LASTEXITCODE" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          exit 0
+      - name: Package
+        run: pwsh packaging/windows/package.ps1 -Build build -Cli $env:CLI -CliDocs cli -CliSource cli-src -Out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-windows
+          path: dist/*
+          retention-days: 5
+      - name: Self-test and screenshots of the package (FluentWinUI3, light and dark)
+        run: |
+          $dir = Get-ChildItem dist/*.zip | Select-Object -First 1
+          Expand-Archive $dir.FullName pkg
+          $exe = (Get-ChildItem -Recurse pkg -Filter yakbd-gui.exe | Select-Object -First 1).FullName
+          $st = Start-Process -PassThru -Wait $exe -ArgumentList @("--self-test", "tests/data/latin-altgr-deadkeys.kbl.json") -RedirectStandardOutput selftest.txt
+          Get-Content selftest.txt
+          if ($st.ExitCode -ne 0) { throw "self-test failed" }
+          New-Item -ItemType Directory shots | Out-Null
+          foreach ($mode in "light", "dark") {
+            $p = Start-Process -PassThru -Wait $exe -ArgumentList @("--appearance", $mode, "--size", "1360x860", "--grab", "shots/keyboard-$mode.png", "--grab-delay", "4000", "--select", "/hardware/layers/4/bindings/KeyE", "tests/data/latin-altgr-deadkeys.kbl.json")
+            if ($p.ExitCode -ne 0) { throw "grab $mode failed" }
+          }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots-windows
+          path: shots/*.png
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Test result
+        run: if ($env:TESTS_EXIT -ne "0") { throw "ctest failed (exit $env:TESTS_EXIT); see Build and test" }
+
+  macos:
+    needs: cli
+    if: inputs.platforms == 'all' || inputs.platforms == 'macos'
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: cli
+          path: cli
+      - uses: actions/cache@v4
+        with:
+          path: ~/qt-downloads
+          key: qt-clang_64-${{ hashFiles('tools/qt-pins.cmake') }}
+      - run: cmake -DPLATFORM=clang_64 -DDEST=$HOME/qt -DDOWNLOADS=$HOME/qt-downloads -P tools/getqt.cmake
+      - name: Build and test
+        env:
+          YAKBD_REQUIRE_CLI: 1
+          TAG: ${{ needs.cli.outputs.tag }}
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          v=${TAG#v}
+          chmod +x cli/yakbd-$v-darwin-*
+          cli=$PWD/cli/yakbd-$v-darwin-$( [ "$(uname -m)" = arm64 ] && echo arm64 || echo amd64 )
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$HOME/qt \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DYAKBD_CLI="$cli"
+          cmake --build build --parallel
+          ctest --test-dir build --output-on-failure --timeout 300
+      - name: Package
+        env:
+          TAG: ${{ needs.cli.outputs.tag }}
+        run: |
+          v=${TAG#v}
+          sh packaging/macos/package.sh build cli/yakbd-$v-darwin-amd64 cli/yakbd-$v-darwin-arm64 dist
+      - name: Self-test and screenshots of the package (macOS style, light and dark)
+        run: |
+          hdiutil attach dist/*.dmg -mountpoint /tmp/yakbd -nobrowse
+          app="/tmp/yakbd/YAKBD Editor.app/Contents/MacOS"
+          lipo -info "$app/YAKBD Editor" "$app/yakbd"
+          "$app/YAKBD Editor" --self-test tests/data/latin-altgr-deadkeys.kbl.json
+          mkdir shots
+          for mode in light dark; do
+            "$app/YAKBD Editor" --appearance $mode --size 1360x860 --grab shots/keyboard-$mode.png --grab-delay 4000 \
+              --select /hardware/layers/4/bindings/KeyE tests/data/latin-altgr-deadkeys.kbl.json
+          done
+          hdiutil detach /tmp/yakbd
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-macos
+          path: dist/*
+          retention-days: 5
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots-macos
+          path: shots/*.png
+          if-no-files-found: warn
+          retention-days: 14

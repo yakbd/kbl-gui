@@ -1,0 +1,2 @@
+// Windows resources of yakbd-gui.exe. yakbd.ico (and macos/yakbd.icns) are renderings of qml/icons/yakbd.svg.
+IDI_ICON1 ICON "yakbd.ico"

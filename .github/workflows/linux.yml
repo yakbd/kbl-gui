@@ -1,0 +1,56 @@
+name: Linux
+
+# Build, tests (offscreen and under Xvfb) and light/dark screenshots, on the oldest supported build host.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    container: ubuntu:22.04
+    timeout-minutes: 40
+    steps:
+      - name: Git for checkout
+        run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates
+      - uses: actions/checkout@v4
+      - name: Build dependencies
+        run: sh tools/linux-build-deps.sh
+      - name: Qt cache
+        uses: actions/cache@v4
+        with:
+          path: /opt/qt-downloads
+          key: qt-linux_gcc_64-${{ hashFiles('tools/qt-pins.cmake') }}
+      - name: Qt (pinned archives, SHA-1 checked)
+        run: cmake -DPLATFORM=linux_gcc_64 -DDEST=/opt/qt -DDOWNLOADS=/opt/qt-downloads -P tools/getqt.cmake
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH=/opt/qt
+      - name: Build
+        run: cmake --build build
+      - name: Tests
+        env:
+          LANG: C.UTF-8
+          YAKBD_REQUIRE_CLI: 1
+        run: ctest --test-dir build --output-on-failure --timeout 300
+      - name: Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-linux
+          path: build/screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Package (tarball and AppImage)
+        run: sh packaging/linux/package.sh build build/cli/yakbd dist
+      # About 100 MB: kept only for hand-started runs (artifact storage is small on the free plan).
+      - name: Packages
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-linux
+          path: dist/*
+          retention-days: 3

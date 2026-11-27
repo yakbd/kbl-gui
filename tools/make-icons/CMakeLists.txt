@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.25)
+project(make-icons CXX)
+find_package(Qt6 REQUIRED COMPONENTS Gui Svg)
+add_executable(make-icons main.cpp)
+target_link_libraries(make-icons Qt6::Gui Qt6::Svg)

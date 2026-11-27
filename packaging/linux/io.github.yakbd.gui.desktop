@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=YAKBD Editor
+GenericName=Keyboard Layout Editor
+Comment=Edit .kbl.json keyboard layouts and build them with yakbd
+Exec=yakbd-gui %f
+Icon=io.github.yakbd.gui
+Terminal=false
+Categories=Utility;Development;
+MimeType=application/json;
+Keywords=keyboard;layout;klc;cldr;
