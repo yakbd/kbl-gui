@@ -10,7 +10,7 @@ pin, compile, installer). It holds no Windows facts (CLEAN-ROOM.md).
     cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=$PWD/../qt
     cmake --build build
     ctest --test-dir build --output-on-failure      # unit, QML, CLI integration, screenshots (Xvfb)
-    sh packaging/linux/package.sh build build/cli/yakbd dist   # tarball + AppImage
+    sh packaging/linux/package.sh build build/cli/yakbd dist   # AppImage + runtime sources
     tools/distro-check.sh dist                      # packages on 5 distributions in Docker/Podman
 
 The build host for Linux is Ubuntu 22.04 (`tools/docker/build.Dockerfile`, the same as CI) so that the binaries run
@@ -54,7 +54,9 @@ on glibc 2.35 and later. CMake 3.25+ is needed (Qt 6.12's minimum). Configuring 
 - `offscreen` reports no colour scheme; light/dark screenshots need xcb under Xvfb with `QT_QPA_PLATFORMTHEME=gtk3`.
 - Windows: the install must be one flat folder (`CMAKE_INSTALL_BINDIR` "." is set before `qt_standard_project_setup`);
   `yakbd-setup.exe` must be built with the Go of the CLI tag's `installer/stub-386.version` and from an LF checkout,
-  or the `yakbd.exe` it carries differs from the release's (`package.ps1` refuses that). Tests need LF test data
+  or the `yakbd.exe` it carries differs from the release's (`make-setup.sh` refuses that). Windows builds are MSVC
+  (x64 and arm64 natively, one toolchain; Qt has arm64 for MSVC only); `package.ps1` copies the VC runtime DLLs
+  from the developer shell's `VCToolsRedistDir`. Tests need LF test data
   (`.gitattributes`).
 - macOS: the app is "YAKBD Editor" because "YAKBD" and the CLI "yakbd" collide on a case-insensitive file system.
 - Qt's deployment script brings only the xcb platform plugin on Linux; `packaging/linux/package.sh` adds Wayland and

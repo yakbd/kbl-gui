@@ -11,7 +11,7 @@ clidocs=${5:-$(dirname "$amd64")}
 mkdir -p "$4"
 out=$(cd "$4" && pwd)
 ver=$(sed -n "s/^YAKBD_GUI_VERSION_FULL:STRING=//p" "$build/CMakeCache.txt")
-name="yakbd-gui-$ver-macos-universal"
+name="YAKBD-Editor-$ver"  # universal (x86_64 + arm64)
 tmpdir="$out/.work"
 rm -rf "$tmpdir"
 mkdir -p "$tmpdir/stage"
@@ -48,7 +48,7 @@ dmgdir="$tmpdir/dmg"
 mkdir -p "$dmgdir"
 cp -R "$app" "$dmgdir/"
 ln -s /Applications "$dmgdir/Applications"
-hdiutil create -volname "YAKBD $ver" -srcfolder "$dmgdir" -ov -format UDZO "$out/$name.dmg"
+hdiutil create -volname "YAKBD Editor $ver" -srcfolder "$dmgdir" -ov -format UDZO "$out/$name.dmg"
 rm -rf "$tmpdir"
 (cd "$out" && shasum -a 256 "$name.dmg" > "$name.SHA256SUMS")
 ls -l "$out"

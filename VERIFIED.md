@@ -17,6 +17,11 @@ The repository was renamed from `yakbd/kbl-gui` to `yakbd/yakbd-gui` after this 
 repository, so they verify with `gh attestation verify <file> --owner yakbd` or `-R yakbd/kbl-gui`, not with
 `-R yakbd/yakbd-gui`. Releases from 0.1.0-preview.2 on verify with `-R yakbd/yakbd-gui`.
 
+From 0.1.0-preview.2 a release has fewer files: one `yakbd-setup.exe` for every Windows architecture (the editor for
+x64 and ARM64, built with MSVC; the sections below used MinGW and x64 only), the `.dmg`, the AppImage and its runtime
+sources. The Windows zip and the Linux tarball are gone; the distribution checks below ran the tarball, which held the
+same files as the AppImage.
+
 The release's `yakbd-setup.exe` in the Windows 11 guest (install, swap with the CLI-only setup, uninstall) is
 checked before the release is published; its result is added here.
 

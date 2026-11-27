@@ -14,13 +14,15 @@ set(QT_PIN_clang_64
   "6.12.1-0-202611180803qtdeclarative-MacOS-MacOS_26-Clang-MacOS-MacOS_26-X86_64-ARM64.7z" d75d0313da43168a8403516a7bdb5d202d49c8ae
   "6.12.1-0-202611180803qtsvg-MacOS-MacOS_26-Clang-MacOS-MacOS_26-X86_64-ARM64.7z" b9518ce0afe5a6a24a5b9c609465a470fbd06b7a
 )
-set(QT_PIN_win64_mingw_URL "https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_6121/qt6_6121_mingw/qt.qt6.6121.win64_mingw")
-set(QT_PIN_win64_mingw
-  "6.12.1-0-202611180427qtbase-Windows-Windows_11_24H2-Mingw-Windows-Windows_11_24H2-X86_64.7z" 8c78eb304c62d7fba14f1cbc6aec0e6ccfee2df8
-  "6.12.1-0-202611180427qtsvg-Windows-Windows_11_24H2-Mingw-Windows-Windows_11_24H2-X86_64.7z" 10562c8e455118fe90e35e4adce8d2b018a94453
-  "6.12.1-0-202611180427qtdeclarative-Windows-Windows_11_24H2-Mingw-Windows-Windows_11_24H2-X86_64.7z" a07a748beae73d1d190f18c267ffe5476cc5b70f
+set(QT_PIN_win64_msvc2022_64_URL "https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_6121/qt6_6121_msvc2022_64/qt.qt6.6121.win64_msvc2022_64")
+set(QT_PIN_win64_msvc2022_64
+  "6.12.1-0-202611180427qtbase-Windows-Windows_11_24H2-MSVC2022-Windows-Windows_11_24H2-X86_64.7z" 45309adb3dc34a62dba891b620e4076233bb7f0c
+  "6.12.1-0-202611180427qtsvg-Windows-Windows_11_24H2-MSVC2022-Windows-Windows_11_24H2-X86_64.7z" 20e1dfde74c5b4dd0e72052ede6df94ae640621d
+  "6.12.1-0-202611180427qtdeclarative-Windows-Windows_11_24H2-MSVC2022-Windows-Windows_11_24H2-X86_64.7z" 2d45d2b048c5d4d9d5786c9099a19c2e061a1e77
 )
-set(QT_PIN_mingw_toolchain_URL "https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/tools_mingw1510/qt.tools.win64_mingw1510")
-set(QT_PIN_mingw_toolchain
-  "15.1.0-202610271023mingw1510.7z" c32ac26e95383acf210ca9db74d16171402dae45
+set(QT_PIN_win64_msvc2022_arm64_URL "https://download.qt.io/online/qtsdkrepository/windows_arm64/desktop/qt6_6121/qt6_6121/qt.qt6.6121.win64_msvc2022_arm64")
+set(QT_PIN_win64_msvc2022_arm64
+  "6.12.1-0-202611180427qtbase-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-AARCH64.7z" ce02a8de53845dc95c89aa2b01668af370de8bd9
+  "6.12.1-0-202611180427qtsvg-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-AARCH64.7z" 6ac92deb0173639d0c691c19365920ddc56af467
+  "6.12.1-0-202611180427qtdeclarative-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-AARCH64.7z" f3346c3ba0fb6c9ae26620e375b25c6f97e67699
 )

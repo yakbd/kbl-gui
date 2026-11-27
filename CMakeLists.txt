@@ -72,6 +72,7 @@ qt_generate_deploy_qml_app_script(
   TARGET yakbd-gui
   OUTPUT_SCRIPT deploy_script
   NO_TRANSLATIONS
+  NO_COMPILER_RUNTIME  # Windows: package.ps1 copies the Visual C++ runtime DLLs itself (no vc_redist installer)
 )
 install(SCRIPT ${deploy_script})
 if(UNIX AND NOT APPLE)

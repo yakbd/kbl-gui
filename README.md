@@ -38,18 +38,18 @@ Download from the [releases](https://github.com/yakbd/yakbd-gui/releases) of thi
 workflow; each file has a `SHA256SUMS` line and a build provenance attestation: `gh attestation verify <file> -R
 yakbd/yakbd-gui`).
 
-- **Windows** (x64): `yakbd-setup.exe` is the yakbd tool's own installer carrying the editor: it installs the
-  editor and `yakbd.exe` into one folder and replaces a CLI-only install in place (and the other way round). It
-  takes `msiexec`-style switches (`/quiet /norestart`). There is no Start-menu shortcut yet; start
-  `yakbd-gui.exe` from the install folder. The zip is the same files without installation. The bundled
-  `yakbd-setup.exe` needs yakbd-cli 0.1.0-preview.2 or later (the extra payload); with an older CLI release the
-  `Packages` workflow builds the zip only.
-- **macOS** (Apple silicon and Intel, macOS 14.4 or later): `YAKBD Editor.app` in a `.dmg`, with `yakbd` inside the app.
+- **Windows**: one `yakbd-setup.exe` for every Windows PC. It is the yakbd tool's own installer with the editor
+  added: it installs `yakbd.exe` for the PC's architecture (x86, x64 or ARM64) and, on x64 and ARM64, the editor
+  next to it, in `C:\Program Files\YAKBD\yakbd\`, puts that folder on the PATH, and replaces a CLI-only install in
+  place (and the other way round). Qt 6 has no 32-bit Windows build, so on x86 it installs the CLI only. It takes
+  `msiexec`-style switches (`/quiet /norestart`). Start the editor as `C:\Program Files\YAKBD\yakbd\yakbd-gui.exe`
+  (a Start-menu shortcut comes with yakbd-cli 0.1.0-preview.3).
+- **macOS** (Apple silicon and Intel, macOS 14.4 or later): `YAKBD-Editor-<version>.dmg` with `YAKBD Editor.app`, and `yakbd` inside the app.
   The app is **not signed or notarized**, so macOS blocks it the first time: open it once, then go to
   **System Settings › Privacy & Security**, find the message about YAKBD and click **Open Anyway** (within about an
   hour), and confirm. The command-line tool is at `YAKBD Editor.app/Contents/MacOS/yakbd`.
-- **Linux** (x86-64, glibc 2.35 or later: Ubuntu 22.04+, Debian 12+, Fedora): the AppImage (make it executable and
-  run it), or the tarball (unpack anywhere, run `bin/yakbd-gui`; `bin/yakbd` is the CLI). They need the libraries
+- **Linux** (x86-64, glibc 2.35 or later: Ubuntu 22.04+, Debian 12+, Fedora): `YAKBD-Editor-<version>-x86_64.AppImage`;
+  make it executable and run it (the CLI is inside: `--appimage-extract` shows `usr/bin/yakbd`). It needs the libraries
   every desktop has: OpenGL/EGL, libxkbcommon, fontconfig, D-Bus, GLib and GSSAPI (Kerberos); on a minimal system
   `apt install libgl1 libegl1 libxkbcommon0 libfontconfig1 libdbus-1-3 libglib2.0-0 libgssapi-krb5-2`. On X11 Qt
   also needs the xcb utility libraries, which desktops do not all install (`libxcb-cursor0` is the one most often
@@ -75,21 +75,21 @@ and GTK runtime libraries, Xvfb for the screenshot test) and installs a pinned C
     cmake --build build
     ctest --test-dir build --output-on-failure
     ./build/yakbd-gui
-    sh packaging/linux/package.sh build build/cli/yakbd dist     # tarball + AppImage
+    sh packaging/linux/package.sh build build/cli/yakbd dist     # AppImage + runtime sources
 
-**Windows** (x64, Qt's MinGW 15.1 toolchain, so no Visual C++ runtime is needed):
+**Windows** (x64 or ARM64, natively; Visual Studio 2022 with the C++ tools of that architecture):
 
-    cmake -DPLATFORM=win64_mingw -DDEST=C:/qt -P tools/getqt.cmake
-    cmake -DPLATFORM=mingw_toolchain -DDEST=C:/mingw -P tools/getqt.cmake
-    # put the folder with g++.exe and mingw32-make.exe (under C:/mingw) first on PATH
-    cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_PREFIX_PATH=C:/qt -DYAKBD_CLI=C:/path/to/yakbd.exe
-    cmake --build build --parallel
-    pwsh packaging/windows/package.ps1 -Build build -Cli C:/path/to/yakbd.exe -CliSource <yakbd-cli checkout at the tag> -Out dist
+    cmake -DPLATFORM=win64_msvc2022_64 -DDEST=C:/qt -P tools/getqt.cmake      # ARM64: win64_msvc2022_arm64
+    # in a "Developer PowerShell for VS" of the same architecture:
+    cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=C:/qt -DYAKBD_CLI=C:/path/to/yakbd.exe
+    cmake --build build
+    pwsh packaging/windows/package.ps1 -Build build -Arch x64 -CliDocs <folder with yakbd-cli-LICENSE and -NOTICE> -Out dist
 
-`yakbd-setup.exe` is made by the yakbd-cli checkout's own `tools/toolsetup` (Go), with the editor as the extra
-payload; the zip needs no Go. Use the Go version named in the checkout's `installer/stub-386.version`: only then is
-the `yakbd.exe` it carries byte-identical to the release's, which `package.ps1` checks. Run `yakbd-gui.exe` from the
-package folder (or the build folder, with Qt's `bin` on PATH).
+That gives `dist\payload-x64\` (the editor, Qt, the Visual C++ runtime and the licence texts); run its
+`yakbd-gui.exe`. `packaging/windows/make-setup.sh` (Linux or macOS, with Go) turns the x64 and ARM64 payloads into
+`yakbd-setup.exe` with a checkout of yakbd-cli at the release tag, whose `tools/toolsetup` is the installer
+machinery. Use the Go version named in the checkout's `installer/stub-386.version`: only then is every `yakbd.exe` it
+carries byte-identical to the release's, which the script checks against the release's zips.
 
 **macOS** (Xcode command-line tools):
 

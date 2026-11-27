@@ -44,7 +44,7 @@ jobs:
           path: build/screenshots/*.png
           if-no-files-found: warn
           retention-days: 14
-      - name: Package (tarball and AppImage)
+      - name: Package (AppImage and its runtime sources)
         run: sh packaging/linux/package.sh build build/cli/yakbd dist
       # About 100 MB: kept only for hand-started runs (artifact storage is small on the free plan).
       - name: Packages

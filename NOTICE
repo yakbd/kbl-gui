@@ -40,12 +40,12 @@ ICU (Linux packages)
 The Linux packages include the ICU libraries (libicuuc, libicui18n, libicudata) that Qt's Linux build uses, under
 the Unicode License v3 (third_party/licenses/Unicode-3.0.txt). Copyright (c) 2016 and later Unicode, Inc. and others.
 
-MinGW runtime (Windows packages)
---------------------------------
-The Windows build is made with Qt's MinGW 15.1 toolchain and ships its runtime libraries: libgcc_s_seh-1.dll and
-libstdc++-6.dll (GPL version 3 with the GCC Runtime Library Exception 3.1, third_party/licenses/GPL-3.0.txt and
-third_party/licenses/GCC-exception-3.1.txt) and libwinpthread-1.dll (MinGW-w64 winpthreads, under the licence in
-the licence files the Windows package copies from the toolchain).
+Visual C++ runtime (Windows packages)
+-------------------------------------
+The Windows builds (x64 and arm64) are made with Microsoft Visual C++ (Visual Studio 2022) and ship its runtime
+DLLs (vcruntime140*.dll, msvcp140*.dll, concrt140.dll and the others of the toolset's Microsoft.VC*.CRT folder) next to
+the editor. They are Microsoft's redistributable files, distributed under the Visual Studio licence terms that
+allow their redistribution with an application; they are not open source.
 
 AppImage runtime (Linux AppImage only)
 --------------------------------------
@@ -60,9 +60,9 @@ libraries built in, each under its own licence:
     mimalloc                                                                MIT
     musl libc                                                               MIT
 
-Every release that ships an AppImage also carries, as release assets, the source of the runtime at tag 20251108
-(its build scripts and the libfuse patch) and fuse-3.15.0.tar.xz, the libfuse source the runtime is built from.
-The tarball does not contain the runtime.
+Every release that ships an AppImage also carries the release asset appimage-runtime-sources-<version>.tar.gz: the
+source of the runtime at tag 20251108 (its build scripts and the libfuse patch) and fuse-3.15.0.tar.xz, the libfuse
+source the runtime is built from.
 
 yakbd CLI
 ---------

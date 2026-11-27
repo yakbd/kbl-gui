@@ -1,18 +1,17 @@
 #!/bin/sh
 # Runs the Linux packages on several distributions in containers (Docker or Podman, rootless is fine):
-# installs only the runtime libraries a desktop has anyway, then from the unpacked tarball the self-test (open,
+# installs only the runtime libraries a desktop has anyway, then from the extracted AppImage the self-test (open,
 # edit, save, reopen, yakbd validate), an offscreen screenshot and a screenshot under Xvfb with the GTK platform
 # theme (light and dark), lists the X11 libraries the xcb plugin still lacks without GTK, and runs the AppImage's
 # self-test. Screenshots go to <dist>/distro-shots/.
-#   tools/distro-check.sh <folder with the .tar.gz and .AppImage> [image ...]
+#   tools/distro-check.sh <folder with the .AppImage> [image ...]
 set -eu
 dist=$(cd "$1" && pwd)
 shift
 images=${*:-"ubuntu:22.04 ubuntu:24.04 ubuntu:26.04 debian:12 fedora:43"}
 data=$(cd "$(dirname "$0")/../tests/data" && pwd)
 engine=${CONTAINER_ENGINE:-docker}
-tarball=$(ls "$dist"/yakbd-gui-*-linux-x86_64.tar.gz | head -1)
-appimage=$(ls "$dist"/yakbd-gui-*-linux-x86_64.AppImage | head -1)
+appimage=$(ls "$dist"/YAKBD-Editor-*-x86_64.AppImage | head -1)
 mkdir -p "$dist/distro-shots"
 status=0
 for image in $images; do
@@ -35,7 +34,7 @@ for image in $images; do
   if $engine run --rm -v "$dist:/dist" -v "$data:/data:ro" "$image" sh -c "
       set -e
       $base
-      mkdir /t && tar -xzf /dist/$(basename "$tarball") -C /t && cd /t/yakbd-gui-*
+      mkdir /t && cp /dist/$(basename "$appimage") /t/app && cd /t && ./app --appimage-extract >/dev/null && cd squashfs-root/usr
       ./bin/yakbd-gui --self-test /data/latin-altgr-deadkeys.kbl.json
       QT_QPA_PLATFORM=offscreen ./bin/yakbd-gui --grab /tmp/shot.png --grab-delay 1500 /data/minimal-qwerty.kbl.json
       $x11
@@ -49,8 +48,7 @@ for image in $images; do
           --size 1360x860 --grab /dist/distro-shots/$tag-\$mode.png --grab-delay 2500 \
           --select /hardware/layers/4/bindings/KeyE /data/latin-altgr-deadkeys.kbl.json 2>/dev/null | grep grab
       done
-      cp /dist/$(basename "$appimage") /tmp/app && cd /tmp && ./app --appimage-extract >/dev/null
-      ./squashfs-root/AppRun --self-test /data/minimal-qwerty.kbl.json
+      /t/squashfs-root/AppRun --self-test /data/minimal-qwerty.kbl.json
     " >"$log" 2>&1; then
     grep -E "^(PASS|grab|X11)" "$log"
     echo "PASS $image"

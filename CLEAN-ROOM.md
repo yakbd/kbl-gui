@@ -12,7 +12,7 @@ which the editor runs. This file records what the editor's authors read.
 | [`yakbd/yakbd-cli`](https://github.com/yakbd/yakbd-cli) at `v0.1.0-preview.1` and `v0.1.0-preview.2` | README, `docs/report-file.md` (the report contract), `docs/installer-cli.md` §12 (the bundled installer), the commands' `-h` output, and the released binaries run as black boxes |
 | Qt documentation (doc.qt.io, 6.12) and Qt's public source repository `qt/qtdeclarative` (one code search: the role of native menu items) | Qt Quick Controls, dialogs, styles, deployment, CMake API |
 | GitHub releases of CMake, AppImage `appimagetool` and `type2-runtime`, libfuse 3.15.0 | build and packaging tools, pinned by SHA-256; the runtime's LICENSE and libfuse's LGPL-2.1 text copied to `third_party/licenses/`; the runtime's build script read to list the libraries it embeds |
-| gnu.org, the GCC repository's `COPYING.RUNTIME`, the Unicode licence | the licence texts in `third_party/licenses/`, unchanged |
+| gnu.org, the Unicode licence | the licence texts in `third_party/licenses/`, unchanged |
 
 ## Not read
 
