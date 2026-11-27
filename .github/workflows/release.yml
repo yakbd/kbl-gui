@@ -327,6 +327,9 @@ jobs:
             "$app/YAKBD Editor" --appearance $mode --size 1360x860 --grab shots/keyboard-$mode.png --grab-delay 4000 \
               --select /hardware/layers/4/bindings/KeyE tests/data/latin-altgr-deadkeys.kbl.json
           done
+          # What a person checks on a Mac, as far as the runner allows (menus, live dark switch, native dialog).
+          sh tools/macos-desktop-check.sh "$app" "$PWD/tests/data/latin-altgr-deadkeys.kbl.json" shots | tee shots/desktop.txt
+          { echo "### macOS desktop checks"; echo '```'; grep "^RESULT" shots/desktop.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           hdiutil detach /tmp/yakbd
       - uses: actions/upload-artifact@v4
         with:
@@ -337,7 +340,7 @@ jobs:
         if: always()
         with:
           name: screenshots-macos
-          path: shots/*.png
+          path: shots/
           if-no-files-found: warn
           retention-days: 14
 

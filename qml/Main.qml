@@ -474,6 +474,7 @@ ApplicationWindow {
     }
     PreferencesDialog {
         id: prefsDialog
+        objectName: "preferencesDialog"
         anchors.centerIn: parent
     }
     AboutDialog {

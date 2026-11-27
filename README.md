@@ -77,7 +77,7 @@ and GTK runtime libraries, Xvfb for the screenshot test) and installs a pinned C
     ./build/yakbd-gui
     sh packaging/linux/package.sh build build/cli/yakbd dist     # AppImage + runtime sources
 
-**Windows** (x64 or ARM64, natively; Visual Studio 2022 with the C++ tools of that architecture):
+**Windows** (x64 or ARM64, natively; Visual Studio 2022 or later with the C++ tools of that architecture):
 
     cmake -DPLATFORM=win64_msvc2022_64 -DDEST=C:/qt -P tools/getqt.cmake      # ARM64: win64_msvc2022_arm64
     # in a "Developer PowerShell for VS" of the same architecture:

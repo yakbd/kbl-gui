@@ -42,10 +42,10 @@ the Unicode License v3 (third_party/licenses/Unicode-3.0.txt). Copyright (c) 201
 
 Visual C++ runtime (Windows packages)
 -------------------------------------
-The Windows builds (x64 and arm64) are made with Microsoft Visual C++ (Visual Studio 2022) and ship its runtime
-DLLs (vcruntime140*.dll, msvcp140*.dll, concrt140.dll and the others of the toolset's Microsoft.VC*.CRT folder) next to
-the editor. They are Microsoft's redistributable files, distributed under the Visual Studio licence terms that
-allow their redistribution with an application; they are not open source.
+The Windows builds (x64 and arm64) are made with Microsoft Visual C++ (the release runners' Visual Studio) and
+ship its runtime DLLs (vcruntime140*.dll, msvcp140*.dll, concrt140.dll and the others of the toolset's
+Microsoft.VC*.CRT folder) next to the editor. They are Microsoft's redistributable files, distributed under the
+Visual Studio licence terms that allow their redistribution with an application; they are not open source.
 
 AppImage runtime (Linux AppImage only)
 --------------------------------------

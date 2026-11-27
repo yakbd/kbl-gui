@@ -47,3 +47,9 @@ if(XVFB_RUN AND UNIX AND NOT APPLE)
   add_executable(pngstat pngstat.cpp)
   target_link_libraries(pngstat PRIVATE Qt6::Gui)
 endif()
+
+# The main window with the platform's standard shortcuts (⌘ on macOS) and the live appearance switch.
+qt_add_executable(tst_window tst_window.cpp)
+target_link_libraries(tst_window PRIVATE kblcore Qt6::Test Qt6::Quick Qt6::QuickControls2 yakbduiplugin)
+add_test(NAME tst_window COMMAND tst_window)
+set_tests_properties(tst_window PROPERTIES ENVIRONMENT "${test_env}")
