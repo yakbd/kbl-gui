@@ -342,10 +342,10 @@ bool Cli::compile(const QString &outputFolder)
     m_docFile = m_tmp->filePath(m_doc->fileNameForCli());
     m_reportFile = m_tmp->filePath(QStringLiteral("report.json"));
     m_runTarget = target();
-    m_outPath = outputFolder;
+    m_outPath = QFileInfo(outputFolder).absoluteFilePath(); // the CLI runs in a temporary folder
     return start(QStringLiteral("compile"),
                  QStringList{QStringLiteral("compile")} + targetArgs(QStringLiteral("compile"))
-                     + QStringList{QStringLiteral("-o"), outputFolder, QStringLiteral("-report"), m_reportFile, m_docFile},
+                     + QStringList{QStringLiteral("-o"), m_outPath, QStringLiteral("-report"), m_reportFile, m_docFile},
                  true);
 }
 
@@ -357,10 +357,10 @@ bool Cli::buildInstaller(const QString &outputFile)
     m_docFile = m_tmp->filePath(m_doc->fileNameForCli());
     m_reportFile = m_tmp->filePath(QStringLiteral("report.json"));
     m_runTarget = target();
-    m_outPath = outputFile;
+    m_outPath = QFileInfo(outputFile).absoluteFilePath();
     return start(QStringLiteral("installer"),
                  QStringList{QStringLiteral("installer")} + targetArgs(QStringLiteral("installer"))
-                     + QStringList{QStringLiteral("-o"), outputFile, QStringLiteral("-report"), m_reportFile, m_docFile},
+                     + QStringList{QStringLiteral("-o"), m_outPath, QStringLiteral("-report"), m_reportFile, m_docFile},
                  true);
 }
 

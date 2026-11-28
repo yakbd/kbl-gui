@@ -234,7 +234,10 @@ private slots:
         QTRY_VERIFY(picker->isVisible());
         QQuickItem *validate = win->findChild<QQuickItem *>(QStringLiteral("validateButton"));
         QVERIFY(validate);
-        const QPointF right = validate->mapToScene(QPointF(validate->width(), 0));
+        // The layout follows the new width on a later turn of the event loop (on macOS after the resize event).
+        auto rightEdge = [&] { return validate->mapToScene(QPointF(validate->width(), 0)).x(); };
+        QTRY_VERIFY_WITH_TIMEOUT(rightEdge() <= win->width(), 5000);
+        const QPointF right(rightEdge(), 0);
         QVERIFY2(right.x() <= win->width(), qPrintable(QStringLiteral("Validate ends at %1 of %2").arg(right.x()).arg(win->width())));
         QVERIFY(picker->mapToScene(QPointF(picker->width(), 0)).x() <= validate->mapToScene(QPointF(0, 0)).x());
         cli->setTarget(QStringLiteral("macos"));
