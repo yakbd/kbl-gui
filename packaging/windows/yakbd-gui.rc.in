@@ -1,6 +1,6 @@
 // Windows resources of yakbd-gui.exe (configured by CMake). yakbd.ico (and macos/yakbd.icns) are renderings of
 // qml/icons/yakbd.svg. The version resource names the product and the editor's full version: every build of a
-// release carries the same ones (code signing policy).
+// release carries the same ones.
 #include <winver.h>
 
 IDI_ICON1 ICON "@CMAKE_CURRENT_SOURCE_DIR@/packaging/windows/yakbd.ico"

@@ -57,7 +57,6 @@ else
   released=$(sha256sum < "$dl/yakbd-cli-setup.exe" | cut -d' ' -f1)
   rebuilt=$(sha256sum < "$out/yakbd-cli-setup.rebuilt.exe" | cut -d' ' -f1)
   if [ "$released" != "$rebuilt" ]; then
-    # A signed release differs by its signature; then the carried yakbd.exe builds cannot be read from it this way.
     echo "the released yakbd-cli-setup.exe ($released) is not the one rebuilt from $tag ($rebuilt)"; exit 1
   fi
   echo "yakbd-cli-setup.exe rebuilt from $tag is the released one ($released)"

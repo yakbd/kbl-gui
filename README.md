@@ -33,5 +33,4 @@ release on). Each one carries the `yakbd` tool.
 
 MIT-0, see [LICENSE](LICENSE). Qt is used under the LGPL v3; third-party material is listed in [NOTICE](NOTICE).
 [Contributing](https://github.com/yakbd/.github/blob/main/CONTRIBUTING.md) ·
-[Code signing policy](https://github.com/yakbd/yakbd-gui/blob/main/docs/code-signing-policy.md) (planned: free code signing provided by
-[SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org)).
+Releases are not code-signed ([why, and how to check a download](https://github.com/yakbd/yakbd-gui/blob/main/docs/code-signing-policy.md)).

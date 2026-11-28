@@ -187,7 +187,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { Get-Content build/tests/tst_window.txt -ErrorAction SilentlyContinue }
           pwsh packaging/windows/package.ps1 -Build build -Arch ${{ matrix.arch }} -Out dist
           if ($LASTEXITCODE -ne 0) { throw "payload failed" }
-      # Signing (later, SignPath): sign dist/payload-*/yakbd-gui.exe here, before the setup is made.
       - name: Install layout without PATH; self-test and screenshots (FluentWinUI3, light and dark)
         run: |
           # The installed layout: YAKBD\Editor\ (the payload: Qt in qt\, found through the exe's manifest) and
@@ -263,7 +262,6 @@ jobs:
         run: |
           mkdir dist
           sh packaging/windows/make-setup.sh cli-src payloads/payload-x64 payloads/payload-arm64 cli/exe-sha256.txt "$FULL" dist/yakbd-gui-setup.exe
-      # Signing (later, SignPath): sign dist/yakbd-gui-setup.exe here.
       - uses: actions/upload-artifact@v4
         with:
           name: packages-windows
