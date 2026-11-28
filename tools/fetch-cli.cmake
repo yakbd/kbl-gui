@@ -1,4 +1,4 @@
-# Downloads the yakbd CLI of a tagged yakbd-cli release (0.1.0-preview.3 or later) and checks it against the release's
+# Downloads the yakbd CLI of a tagged yakbd-cli release (0.1.0-preview.3 or later; archive names as below) and checks it against the release's
 # SHA256SUMS: the archive for one platform, with yakbd, LICENSE and NOTICE.
 #
 #   cmake -DASSET=linux-amd64 -DDEST=/path/to/dir [-DTAG=v0.1.0-preview.3] [-DSUMS_SHA256=<hash>] -P tools/fetch-cli.cmake
@@ -32,7 +32,12 @@ if(NOT code EQUAL 0)
   message(FATAL_ERROR "SHA256SUMS of ${TAG}: ${st}")
 endif()
 
-set(name "yakbd-${version}-${ASSET}.tar.gz")
+# Releases up to 0.1.0-preview.3 put the version in the archive names; later ones are version-free.
+if(version MATCHES "^0\\.1\\.0-preview\\.[123]$")
+  set(name "yakbd-${version}-${ASSET}.tar.gz")
+else()
+  set(name "yakbd-${ASSET}.tar.gz")
+endif()
 file(STRINGS "${work}/SHA256SUMS" lines REGEX "  ${name}$")
 if(NOT lines)
   message(FATAL_ERROR "${name} is not listed in SHA256SUMS of ${TAG}")

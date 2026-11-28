@@ -17,12 +17,18 @@ mkdir -p "$2"
 out=$(cd "$2" && pwd)
 mode=${3:-}
 v=${tag#v}
+# Releases up to 0.1.0-preview.3 put the version in the archive names (yakbd-<v>-<platform>.tar.gz); later ones are
+# version-free (yakbd-<platform>.tar.gz).
+case $v in
+  0.1.0-preview.[123]) arc=yakbd-$v- ;;
+  *) arc=yakbd- ;;
+esac
 dl="$out/download"
 
 if [ "$mode" != --source-only ]; then
   rm -rf "$dl" && mkdir -p "$dl"
   gh release download "$tag" -R yakbd/yakbd-cli -D "$dl" -p SHA256SUMS -p yakbd-cli-setup.exe \
-    -p "yakbd-$v-linux-amd64.tar.gz" -p "yakbd-$v-macos.tar.gz"
+    -p "${arc}linux-amd64.tar.gz" -p "${arc}macos.tar.gz"
   (cd "$dl" && sha256sum -c --ignore-missing SHA256SUMS && [ "$(sha256sum -c --ignore-missing SHA256SUMS | grep -c ': OK$')" = 3 ])
   for f in "$dl"/yakbd-cli-setup.exe "$dl"/yakbd-*.tar.gz; do
     gh attestation verify "$f" -R yakbd/yakbd-cli >/dev/null
@@ -30,8 +36,8 @@ if [ "$mode" != --source-only ]; then
   done
   for p in linux-amd64 macos; do
     mkdir -p "$out/$p"
-    tar -xzf "$dl/yakbd-$v-$p.tar.gz" -C "$out/$p"
-    [ -x "$out/$p/yakbd" ] || { echo "no yakbd in yakbd-$v-$p.tar.gz"; exit 1; }
+    tar -xzf "$dl/$arc$p.tar.gz" -C "$out/$p"
+    [ -x "$out/$p/yakbd" ] || { echo "no yakbd in $arc$p.tar.gz"; exit 1; }
   done
 fi
 
