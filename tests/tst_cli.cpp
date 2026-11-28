@@ -217,7 +217,7 @@ private slots:
     }
 
     // The target picker: a CLI with targets lists them; validate, pin, compile and installer run for the picked one.
-    // A CLI from before targets (the pinned 0.1.0-preview.3) offers Windows only and gets the old command lines.
+    // A CLI from before targets (0.1.0-preview.3 and earlier) offers Windows only and gets the old command lines.
     void targets()
     {
         KblDocument doc;

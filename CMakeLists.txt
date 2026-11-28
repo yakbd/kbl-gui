@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
-project(yakbd-gui VERSION 0.1.0 LANGUAGES CXX)
+project(yakbd-gui VERSION 0.2.0 LANGUAGES CXX)
 
-# The full version, with a pre-release part CMake's VERSION cannot hold (0.1.0-preview.1). The release workflow sets it;
+# The full version, with a pre-release part CMake's VERSION cannot hold (0.2.0-preview.1). The release workflow sets it;
 # local builds are "-dev". About, --version, package file names and release notes use it.
 set(YAKBD_GUI_VERSION_FULL "${PROJECT_VERSION}-dev" CACHE STRING "Full version of the editor")
 if(NOT YAKBD_GUI_VERSION_FULL MATCHES "^${PROJECT_VERSION}(-[0-9A-Za-z.]+)?$")

@@ -10,27 +10,28 @@ layouts with the bundled [`yakbd`](https://github.com/yakbd/yakbd-cli) tool.
 </picture>
 
 **Runs on** Windows (x64, ARM64), macOS (Apple silicon and Intel) and Linux (x86-64).
-**Builds layouts for** Windows today; macOS and Linux (XKB, Wayland and X11) in the next release; Android, iOS,
-ChromeOS and Keyman planned. Status: preview.
+**Builds layouts for** Windows, macOS and Linux (XKB, Wayland and X11) today; Android, iOS, ChromeOS and Keyman
+planned. Status: preview.
 
 ## Download
 
 From the [latest release](https://github.com/yakbd/yakbd-gui/releases/latest):
 [`yakbd-gui-setup.exe`](https://github.com/yakbd/yakbd-gui/releases/latest/download/yakbd-gui-setup.exe) for Windows,
-the `.dmg` for macOS and the `.AppImage` for Linux (named `yakbd-gui.dmg` and `yakbd-gui-x86_64.AppImage` from the next
-release on). Each one carries the `yakbd` tool.
+[`yakbd-gui.dmg`](https://github.com/yakbd/yakbd-gui/releases/latest/download/yakbd-gui.dmg) for macOS and
+[`yakbd-gui-x86_64.AppImage`](https://github.com/yakbd/yakbd-gui/releases/latest/download/yakbd-gui-x86_64.AppImage)
+for Linux. Each one carries the `yakbd` tool.
 
 ## Documentation
 
-- [Installing the editor](https://yakbd.github.io/editor/#install)
+- [Installing the editor](https://yakbd.github.io/guide/#the-editor)
 - [What the editor does](https://yakbd.github.io/editor/)
-- [Building for Windows, macOS and Linux](https://github.com/yakbd/yakbd-gui/blob/main/docs/targets.md)
-- [Building the editor from source](https://github.com/yakbd/yakbd-gui/blob/main/docs/building.md)
+- [Building for Windows, macOS and Linux](https://yakbd.github.io/editor/targets)
+- [Building the editor from source](https://yakbd.github.io/editor/building)
 - [What is verified](https://yakbd.github.io/editor/verified)
-- [What's new](https://github.com/yakbd/yakbd-gui/releases/latest)
+- [What's new](https://yakbd.github.io/releases)
 
 ## Licence
 
 MIT-0, see [LICENSE](LICENSE). Qt is used under the LGPL v3; third-party material is listed in [NOTICE](NOTICE).
-[Contributing](https://github.com/yakbd/.github/blob/main/CONTRIBUTING.md) ·
-Releases are not code-signed ([why, and how to check a download](https://github.com/yakbd/yakbd-gui/blob/main/docs/code-signing-policy.md)).
+[Contributing](https://yakbd.github.io/contributing) ·
+Releases are not code-signed ([why, and how to check a download](https://yakbd.github.io/editor/code-signing-policy)).

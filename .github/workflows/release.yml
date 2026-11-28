@@ -25,7 +25,7 @@ on:
         type: boolean
         default: false
       version:
-        description: "Release version: 0.1.0-preview.N or 0.1.0-rehearsal.N (empty: packages only, no release)"
+        description: "Release version: 0.2.0-preview.N or 0.2.0-rehearsal.N (empty: packages only, no release)"
         type: string
         default: ""
 
@@ -34,7 +34,7 @@ permissions:
 
 env:
   # The editor's full version in every package (CMake YAKBD_GUI_VERSION_FULL); "-dev" without a release.
-  FULL: ${{ inputs.version != '' && inputs.version || '0.1.0-dev' }}
+  FULL: ${{ inputs.version != '' && inputs.version || '0.2.0-dev' }}
 
 jobs:
   cli:
@@ -57,7 +57,7 @@ jobs:
           SOURCE_ONLY: ${{ inputs.cli_source_only }}
         run: |
           if [ -n "$VERSION" ]; then
-            echo "$VERSION" | grep -Eqx '0\.1\.0-(preview\.[0-9]+|rehearsal\.[0-9]+)' || { echo "::error::version $VERSION is not accepted"; exit 1; }
+            echo "$VERSION" | grep -Eqx '0\.2\.0-(preview\.[0-9]+|rehearsal\.[0-9]+)' || { echo "::error::version $VERSION is not accepted"; exit 1; }
             [ "$PLATFORMS" = all ] || { echo "::error::a release needs platforms=all"; exit 1; }
             [ -n "$WANT" ] || { echo "::error::a release names its yakbd-cli tag explicitly (input cli)"; exit 1; }
             if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v$VERSION" >/dev/null 2>&1; then echo "::error::tag v$VERSION exists"; exit 1; fi
