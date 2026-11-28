@@ -1,5 +1,6 @@
 #!/bin/sh
-# Linux package: an AppImage, with the yakbd CLI next to the editor (YAKBD-Editor-<version>-x86_64.AppImage).
+# Linux package: an AppImage, with the yakbd CLI next to the editor: yakbd-gui-x86_64.AppImage (version-free, so
+# releases/latest/download links work).
 #   packaging/linux/package.sh <build dir> <yakbd binary> <output dir> [<folder with yakbd-cli-LICENSE and -NOTICE>]
 # The last folder defaults to the binary's (tools/fetch-cli.cmake puts them there). The output also gets
 # appimage-runtime-sources-<version>.tar.gz: the source of the AppImage runtime and of the libfuse (LGPL-2.1) built
@@ -67,7 +68,7 @@ fetch https://github.com/libfuse/libfuse/releases/download/fuse-3.15.0/fuse-3.15
 curl -fsSL -o "$srcdir/type2-runtime-20251108-source.tar.gz" \
   https://github.com/AppImage/type2-runtime/archive/refs/tags/20251108.tar.gz
 cat > "$srcdir/README.txt" <<EOF
-Source of the AppImage type 2 runtime that YAKBD-Editor-$ver-x86_64.AppImage begins with:
+Source of the AppImage type 2 runtime that yakbd-gui-x86_64.AppImage (version $ver) begins with:
 - type2-runtime-20251108-source.tar.gz: https://github.com/AppImage/type2-runtime at tag 20251108 (MIT): the runtime,
   its build scripts (scripts/) and the patch it applies to libfuse (patches/libfuse/mount.c.diff).
 - fuse-3.15.0.tar.xz: libfuse 3.15.0 (LGPL-2.1), the release the runtime is built from, unchanged
@@ -88,8 +89,8 @@ EOF
 chmod +x "$appdir/AppRun"
 ARCH=$arch "$tools/appimagetool" --appimage-extract-and-run --runtime-file "$tools/runtime" --no-appstream \
   --mksquashfs-opt -b --mksquashfs-opt 1M --mksquashfs-opt -Xcompression-level --mksquashfs-opt 19 \
-  "$appdir" "$out/YAKBD-Editor-$ver-x86_64.AppImage"
+  "$appdir" "$out/yakbd-gui-x86_64.AppImage"
 
 rm -rf "$tmpdir"
-(cd "$out" && sha256sum "YAKBD-Editor-$ver-x86_64.AppImage" "appimage-runtime-sources-$ver.tar.gz" > "$name.SHA256SUMS")
+(cd "$out" && sha256sum "yakbd-gui-x86_64.AppImage" "appimage-runtime-sources-$ver.tar.gz" > "$name.SHA256SUMS")
 ls -l "$out"

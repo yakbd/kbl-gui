@@ -126,7 +126,7 @@ jobs:
           ctest --test-dir build --output-on-failure --timeout 300
           sh packaging/linux/package.sh build "$cli" dist cli
           # The package reports the release version.
-          (cd /tmp && "$OLDPWD/dist/YAKBD-Editor-$FULL-x86_64.AppImage" --appimage-extract >/dev/null)
+          (cd /tmp && "$OLDPWD/dist/yakbd-gui-x86_64.AppImage" --appimage-extract >/dev/null)
           /tmp/squashfs-root/AppRun --self-test tests/data/minimal-qwerty.kbl.json > /tmp/st.txt
           cat /tmp/st.txt
           grep -qx "YAKBD Editor $FULL" /tmp/st.txt
@@ -440,7 +440,7 @@ jobs:
           V: ${{ inputs.version }}
         run: |
           mkdir release
-          want="yakbd-gui-setup.exe YAKBD-Editor-$V.dmg YAKBD-Editor-$V-x86_64.AppImage appimage-runtime-sources-$V.tar.gz"
+          want="yakbd-gui-setup.exe yakbd-gui.dmg yakbd-gui-x86_64.AppImage appimage-runtime-sources-$V.tar.gz"
           for f in $want; do
             src=$(find collected -type f -name "$f" | head -1)
             # The AppImage runtime's sources (libfuse, LGPL-2.1) are owed with the AppImage (NOTICE): none, no release.

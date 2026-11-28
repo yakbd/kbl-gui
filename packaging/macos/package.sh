@@ -10,7 +10,7 @@ clidocs=${4:-$(dirname "$cli")}
 mkdir -p "$3"
 out=$(cd "$3" && pwd)
 ver=$(sed -n "s/^YAKBD_GUI_VERSION_FULL:STRING=//p" "$build/CMakeCache.txt")
-name="YAKBD-Editor-$ver"  # universal (x86_64 + arm64)
+name="yakbd-gui"  # universal (x86_64 + arm64); version-free for releases/latest/download links
 tmpdir="$out/.work"
 rm -rf "$tmpdir"
 mkdir -p "$tmpdir/stage"

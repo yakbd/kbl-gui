@@ -17,20 +17,21 @@ ChromeOS and Keyman planned. Status: preview.
 
 From the [latest release](https://github.com/yakbd/yakbd-gui/releases/latest):
 [`yakbd-gui-setup.exe`](https://github.com/yakbd/yakbd-gui/releases/latest/download/yakbd-gui-setup.exe) for Windows,
-the `.dmg` for macOS, the `.AppImage` for Linux. Each one carries the `yakbd` tool.
+the `.dmg` for macOS and the `.AppImage` for Linux (named `yakbd-gui.dmg` and `yakbd-gui-x86_64.AppImage` from the next
+release on). Each one carries the `yakbd` tool.
 
 ## Documentation
 
-- [Installing the editor](https://yakbd.github.io/guide/#the-editor)
+- [Installing the editor](https://yakbd.github.io/editor/#install)
 - [What the editor does](https://yakbd.github.io/editor/)
-- [Building for Windows, macOS and Linux](https://yakbd.github.io/editor/targets)
-- [Building the editor from source](https://yakbd.github.io/editor/building)
+- [Building for Windows, macOS and Linux](https://github.com/yakbd/yakbd-gui/blob/main/docs/targets.md)
+- [Building the editor from source](https://github.com/yakbd/yakbd-gui/blob/main/docs/building.md)
 - [What is verified](https://yakbd.github.io/editor/verified)
-- [What's new](https://yakbd.github.io/releases)
+- [What's new](https://github.com/yakbd/yakbd-gui/releases/latest)
 
 ## Licence
 
 MIT-0, see [LICENSE](LICENSE). Qt is used under the LGPL v3; third-party material is listed in [NOTICE](NOTICE).
-[Contributing](https://yakbd.github.io/contributing) ·
-[Code signing policy](https://yakbd.github.io/editor/code-signing-policy) (planned: free code signing provided by
+[Contributing](https://github.com/yakbd/.github/blob/main/CONTRIBUTING.md) ·
+[Code signing policy](https://github.com/yakbd/yakbd-gui/blob/main/docs/code-signing-policy.md) (planned: free code signing provided by
 [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org)).

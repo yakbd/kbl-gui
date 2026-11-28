@@ -11,7 +11,7 @@ shift
 images=${*:-"ubuntu:22.04 ubuntu:24.04 ubuntu:26.04 debian:12 fedora:43"}
 data=$(cd "$(dirname "$0")/../tests/data" && pwd)
 engine=${CONTAINER_ENGINE:-docker}
-appimage=$(ls "$dist"/YAKBD-Editor-*-x86_64.AppImage | head -1)
+appimage=$(ls "$dist"/yakbd-gui-x86_64.AppImage | head -1)
 mkdir -p "$dist/distro-shots"
 status=0
 for image in $images; do

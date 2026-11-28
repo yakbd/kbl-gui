@@ -2,7 +2,7 @@
 # The AppImage on KDE Plasma (X11) and on Wayland (weston and KWin, headless), in a Fedora container with the KDE
 # packages (tools/docker/desktops.Dockerfile); rootless Docker or Podman is enough. One RESULT line per check;
 # screenshots and logs in <dist>/desktop-check/.
-#   tools/desktop-check.sh <folder with YAKBD-Editor-*-x86_64.AppImage>
+#   tools/desktop-check.sh <folder with yakbd-gui-x86_64.AppImage>
 # With TARGETS_CLI=<a Linux yakbd that has targets> it also runs tools/targets-check.sh on KDE Plasma (X11) with that
 # yakbd: <folder>/desktop-check/targets/summary.txt.
 set -eu
@@ -25,7 +25,7 @@ export XDG_RUNTIME_DIR=/tmp/xdg HOME=/tmp/home LANG=C.UTF-8
 mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 mkdir -p "$HOME/.config"
 cd /tmp
-cp /dist/YAKBD-Editor-*-x86_64.AppImage app
+cp /dist/yakbd-gui-x86_64.AppImage app
 ./app --appimage-extract >/dev/null
 gui=/tmp/squashfs-root/AppRun
 layout=/data/latin-altgr-deadkeys.kbl.json
