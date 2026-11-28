@@ -6,6 +6,7 @@
 #include <QPointer>
 #include <QProcess>
 #include <QTemporaryDir>
+#include <QVariant>
 #include <memory>
 
 namespace kbl {
@@ -24,6 +25,13 @@ class Cli : public QObject
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
     Q_PROPERTY(QString operation READ operation NOTIFY busyChanged)
     Q_PROPERTY(QString log READ log NOTIFY logChanged)
+    // The targets this CLI builds for: [{name, label, pin, installer, installerSuffix, installerFilter}], Windows first.
+    Q_PROPERTY(QVariantList targets READ targets NOTIFY programChanged)
+    // The picked target (AppSettings.target when this CLI has it, else windows) and its entry of targets.
+    Q_PROPERTY(QString target READ target NOTIFY targetChanged)
+    Q_PROPERTY(QVariantMap targetInfo READ targetInfo NOTIFY targetChanged)
+    // The target of the last finished command (the report in the Problems panel).
+    Q_PROPERTY(QString reportTarget READ reportTarget NOTIFY reportTargetChanged)
 
 public:
     Cli(KblDocument *doc, ReportModel *report, AppSettings *settings, QObject *parent = nullptr);
@@ -35,6 +43,13 @@ public:
     bool busy() const { return bool(m_proc); }
     QString operation() const { return m_op; }
     QString log() const { return m_log; }
+    QVariantList targets() const { return m_targets; }
+    QString target() const;
+    QVariantMap targetInfo() const;
+    QString reportTarget() const { return m_reportTarget; }
+    // Picks the target (into AppSettings.target when the Cli has settings).
+    Q_INVOKABLE void setTarget(const QString &name);
+    Q_INVOKABLE QString targetLabel(const QString &name) const;
 
     // Finds yakbd: $YAKBD_CLI, the configured path, ..\CLI\ (the Windows install layout), beside the editor, PATH.
     Q_INVOKABLE void locate();
@@ -59,6 +74,8 @@ signals:
     void programChanged();
     void busyChanged();
     void logChanged();
+    void targetChanged();
+    void reportTargetChanged();
     // op: validate, import, pin, compile, installer. ok: exit code 0. message: one line for the status bar.
     void finished(const QString &op, bool ok, const QString &message);
     void imported(const QString &sourcePath);
@@ -67,6 +84,9 @@ private:
     bool start(const QString &op, const QStringList &args, bool writeDocument);
     void onFinished(int exitCode, QProcess::ExitStatus status);
     void appendLog(const QString &text);
+    void probeTargets();
+    // The arguments that pick the current target for a command ("-windows" for validate on Windows).
+    QStringList targetArgs(const QString &command) const;
 
     KblDocument *m_doc;
     ReportModel *m_report;
@@ -78,6 +98,11 @@ private:
     QString m_log;
     QString m_importSource;
     QString m_pinOut;
+    QVariantList m_targets;
+    QString m_runTarget;
+    QString m_reportTarget;
+    QString m_pick = QStringLiteral("windows"); // the pick without AppSettings (tests)
+    QString m_outPath;
     QPointer<QProcess> m_proc;
     std::unique_ptr<QTemporaryDir> m_tmp;
     QString m_docFile;

@@ -106,6 +106,12 @@ public:
     // one undo step; returns the number of values added.
     int mergeMissing(const JPtr &other, const QString &label);
 
+    // The file's `kbl` value, and the lowest format version that holds a document (SPEC §1.1: "0.2" when it uses a
+    // 0.2-only member, else "0.1").
+    Q_INVOKABLE QString formatVersion() const;
+    static QString requiredVersion(const JPtr &root);
+    static const QStringList kVersion02Members; // the 0.2-only objects (a test checks them against the schemas)
+
 signals:
     void filePathChanged();
     void loadedChanged();
@@ -118,6 +124,7 @@ signals:
 private:
     friend class EditCommand;
     bool apply(const Edit &e, bool forward);
+    void addVersionEdits(std::vector<Edit> &edits) const;
     void touched();
     void setError(const QString &e);
     void resetUndo();

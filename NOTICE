@@ -74,13 +74,16 @@ repository contains none of its code.
 
 kbl specification and test data
 -------------------------------
-qml/schema/kbl.schema.json and the example layouts in tests/data/ (except pinned-minimal-qwerty.kbl.json) are
+qml/schema/0.1/kbl.schema.json and the example layouts in tests/data/ (except pinned-minimal-qwerty.kbl.json) are
 unchanged copies from https://github.com/yakbd/kbl-spec at commit ba415d58535b13ec1a702d7b16f94d6bd2730223
 (MIT-0). The layout data in tests/data/cldr-pt-abnt2.kbl.json is a conversion of CLDR release-49
 keyboards/3.0/pt-t-k0-abnt2.xml (https://github.com/unicode-org/cldr) and is under the Unicode License v3
 (third_party/licenses/Unicode-3.0.txt), Copyright (c) Unicode, Inc. tests/data/pinned-minimal-qwerty.kbl.json is
 the output of `yakbd pin` (0.1.0-preview.2) on minimal-qwerty.kbl.json. qml/templates/new.kbl.json is
 minimal-qwerty.kbl.json with its metadata replaced.
+qml/schema/0.2/kbl.schema.json, tests/data/macos-option-deadkeys.kbl.json and tests/data/xkb-caps-deadkeys.kbl.json
+are unchanged copies from the spec-0.2 branch of https://github.com/yakbd/kbl-spec at commit
+65d772bdbdc922801bc9aafee5a75288c39c736f (MIT-0; format version 0.2 is a draft).
 
 Icon
 ----

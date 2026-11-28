@@ -4,6 +4,7 @@
 # controls (TCC) refuse UI scripting or screen capture, the line says so: the in-app tests (tst_window: ⌘
 # shortcuts, appearance switch, menu titles) cover what they can, and "Open Anyway" stays a human check.
 #   tools/macos-desktop-check.sh "<path to YAKBD Editor.app>/Contents/MacOS" <layout.kbl.json> <output dir>
+# With YAKBD_CLI set (a yakbd that has targets) it also checks the Layout › Target menu.
 # Prints one RESULT line per check; exit status 0 (the workflow keeps the lines, not the status).
 app=$1
 layout=$2
@@ -58,4 +59,28 @@ else
   result open-dialog "not captured (TCC screen recording)"
 fi
 kill $pid 2>/dev/null; wait $pid 2>/dev/null
+
+# 4. The target picker in the menu bar (docs/targets.md), when YAKBD_CLI names a yakbd that has targets: Layout ›
+#    Target lists them, and choosing macOS there ticks it.
+if [ -n "${YAKBD_CLI:-}" ]; then
+  "$exe" --no-settings "$layout" >/dev/null 2>&1 &
+  pid=$!
+  sleep 10
+  proc="first process whose unix id is $pid"
+  sub="menu 1 of menu item \"Target\" of menu 1 of menu bar item \"Layout\" of menu bar 1"
+  items=$(osascript -e "tell application \"System Events\" to tell ($proc) to get name of every menu item of $sub" 2>&1)
+  case "$items" in
+    *Windows*macOS*)
+      osascript -e "tell application \"System Events\" to tell ($proc) to click menu item \"macOS\" of $sub" >/dev/null 2>&1
+      sleep 2
+      mark=$(osascript -e "tell application \"System Events\" to tell ($proc) to get value of attribute \"AXMenuItemMarkChar\" of menu item \"macOS\" of $sub" 2>&1)
+      case "$mark" in
+        ""|*missing*|*rror*) result target-menu "FAIL: listed ($items), but macOS is not ticked after choosing it ($mark)" ;;
+        *) result target-menu "pass: $items; macOS ticked after choosing it" ;;
+      esac ;;
+    *"assistive access"*|*"not allowed"*|*"-25211"*|*"-1719"*) result target-menu "not checked: UI scripting refused by TCC ($items)" ;;
+    *) result target-menu "FAIL: Layout › Target lists \"$items\"" ;;
+  esac
+  kill $pid 2>/dev/null; wait $pid 2>/dev/null
+fi
 exit 0

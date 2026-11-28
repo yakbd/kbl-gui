@@ -108,14 +108,47 @@ Pane {
                     text: cli.busy ? qsTr("checking…") : qsTr("changed since the last check")
                     color: Ui.subtle
                     rightPadding: Ui.gap
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: implicitWidth
+                    Layout.minimumWidth: 0
+                    horizontalAlignment: Text.AlignRight
+                    elide: Text.ElideRight
                 }
                 Label {
                     visible: report.total > 0 && !report.stale && !cli.busy
                     text: report.source === "import" ? qsTr("conversion report") : qsTr("from yakbd %1").arg(report.source)
                     color: Ui.subtle
                     rightPadding: Ui.gap
+                    // Gives way to the picker and Validate in a narrow window.
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: implicitWidth
+                    Layout.minimumWidth: 0
+                    horizontalAlignment: Text.AlignRight
+                    elide: Text.ElideRight
+                }
+                // The target picker: what Validate checks and what Layout › Build builds.
+                ComboBox {
+                    id: targetPicker
+                    objectName: "targetPicker"
+                    visible: cli.targets.length > 1
+                    flat: true
+                    model: cli.targets
+                    textRole: "label"
+                    valueRole: "name"
+                    currentIndex: cli.targets.findIndex(t => t.name === cli.target)
+                    onActivated: function (i) {
+                        cli.setTarget(cli.targets[i].name)
+                        currentIndex = Qt.binding(() => cli.targets.findIndex(t => t.name === cli.target))
+                    }
+                    implicitContentWidthPolicy: ComboBox.WidestText
+                    Layout.preferredHeight: 28
+                    ToolTip.visible: hovered
+                    ToolTip.delay: 700
+                    ToolTip.text: qsTr("Target: what Validate checks and Layout › Build builds")
+                    Accessible.name: qsTr("Target")
                 }
                 Button {
+                    objectName: "validateButton"
                     text: qsTr("Validate")
                     flat: true
                     enabled: doc.loaded && cli.available && !cli.busy
@@ -206,7 +239,7 @@ Pane {
                     color: Ui.subtle
                     text: !cli.available ? qsTr("Checking needs the yakbd tool (Preferences).")
                         : report.total === 0 ? qsTr("Not checked yet. Validate (F7) runs yakbd on the open layout.")
-                        : report.filter === "problems" ? qsTr("No problems. The layout builds for Windows.")
+                        : report.filter === "problems" ? qsTr("No problems. The layout builds for %1.").arg(cli.targetLabel(cli.reportTarget || "windows"))
                         : report.filter === "losses" ? qsTr("Nothing is lost.")
                         : qsTr("Nothing to show.")
                 }

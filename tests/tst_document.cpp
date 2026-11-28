@@ -149,6 +149,108 @@ private slots:
         QCOMPARE(doc.valueAt(QStringLiteral("/kbl")).toString(), QStringLiteral("0.1"));
     }
 
+    void schemaVersions()
+    {
+        SchemaModel s;
+        QCOMPARE(s.versions(), (QStringList{QStringLiteral("0.1"), QStringLiteral("0.2")}));
+        s.setVersion(QStringLiteral("0.1"));
+        QVERIFY(s.schemaId().contains(QLatin1String("/schema/0.1/")));
+        QCOMPARE(s.versionFor(QStringLiteral("/metadata/name")), QStringLiteral("0.1"));
+        QCOMPARE(s.versionFor(QStringLiteral("/targets/macos")), QStringLiteral("0.2"));
+        QCOMPARE(s.versionFor(QStringLiteral("/targets/xkb/symbolsName")), QStringLiteral("0.2"));
+        // A 0.1 file still gets the forms of the 0.2-only targets (from the 0.2 schema).
+        QVERIFY(!s.fields(s.schemaFor(QStringLiteral("/targets/macos"))).isEmpty());
+        QVERIFY(!s.fields(s.schemaFor(QStringLiteral("/targets/xkb"))).isEmpty());
+        QVERIFY(!s.describe(QStringLiteral("/targets/macos/layoutName")).isEmpty());
+        s.setVersion(QStringLiteral("0.2"));
+        QVERIFY(s.schemaId().contains(QLatin1String("/schema/0.2/")));
+    }
+
+    // The 0.2-only members the document knows (SPEC §1.1) are the targets the 0.2 schema adds.
+    void version02MembersMatchTheSchemas()
+    {
+        auto targets = [](const char *v) {
+            QFile f(QStringLiteral(":/qt/qml/Yakbd/schema/%1/kbl.schema.json").arg(QLatin1String(v)));
+            if (!f.open(QIODevice::ReadOnly))
+                return QStringList();
+            ParseError e;
+            JPtr root = parseValue(f.readAll(), &e);
+            QStringList out;
+            if (JPtr p = resolve(root, QStringLiteral("/properties/targets/properties")))
+                for (const auto &m : p->members)
+                    out << QStringLiteral("/targets/") + m.key;
+            return out;
+        };
+        const QStringList v1 = targets("0.1"), v2 = targets("0.2");
+        QVERIFY(!v1.isEmpty());
+        QStringList added;
+        for (const QString &t : v2)
+            if (!v1.contains(t))
+                added << t;
+        QCOMPARE(added, KblDocument::kVersion02Members);
+    }
+
+    void editsKeepTheLowestVersion()
+    {
+        KblDocument doc;
+        QVERIFY(doc.open(data("minimal-qwerty.kbl.json")));
+        const QByteArray original = doc.bytes();
+        QCOMPARE(doc.formatVersion(), QStringLiteral("0.1"));
+        // The first 0.2-only member raises kbl and $schema, in the same undo step.
+        doc.setValueAt(QStringLiteral("/targets/macos/layoutName"), QStringLiteral("Demo"), QStringLiteral("Set layoutName"));
+        QCOMPARE(doc.formatVersion(), QStringLiteral("0.2"));
+        QVERIFY(doc.valueAt(QStringLiteral("/$schema")).toString().endsWith(QLatin1String("/schema/0.2/kbl.schema.json")));
+        QCOMPARE(doc.undoText(), QStringLiteral("Set layoutName"));
+        doc.undo();
+        QCOMPARE(doc.bytes(), original);
+        doc.redo();
+        QCOMPARE(doc.formatVersion(), QStringLiteral("0.2"));
+        // An unrelated edit keeps it; removing the last 0.2-only member lowers it again.
+        doc.setValueAt(QStringLiteral("/metadata/name"), QStringLiteral("Renamed"));
+        QCOMPARE(doc.formatVersion(), QStringLiteral("0.2"));
+        doc.removeAt(QStringLiteral("/targets/macos"));
+        QCOMPARE(doc.formatVersion(), QStringLiteral("0.1"));
+        QVERIFY(doc.valueAt(QStringLiteral("/$schema")).toString().endsWith(QLatin1String("/schema/0.1/kbl.schema.json")));
+        // A loss kind of a 0.2-only family in an onLoss policy needs 0.2 as well.
+        doc.setJsonAt(QStringLiteral("/onLoss"), QStringLiteral(R"({"kinds": {"xkb.groupDropped": "error"}})"));
+        QCOMPARE(doc.formatVersion(), QStringLiteral("0.2"));
+    }
+
+    void versionOnlyChangesByEdits()
+    {
+        // A 0.2 file without 0.2-only members opens, saves and takes unrelated edits as 0.2 (a user may ask for a
+        // higher version; the editor only lowers it when an edit removes the last 0.2-only member).
+        QFile f(data("minimal-qwerty.kbl.json"));
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        QByteArray bytes = f.readAll().replace("\"kbl\": \"0.1\"", "\"kbl\": \"0.2\"");
+        KblDocument doc;
+        QVERIFY(doc.loadBytes(bytes, QStringLiteral("x.kbl.json"), true));
+        QCOMPARE(doc.bytes(), bytes);
+        doc.setValueAt(QStringLiteral("/metadata/name"), QStringLiteral("Renamed"));
+        QCOMPARE(doc.formatVersion(), QStringLiteral("0.2"));
+
+        // A 0.2 example opens and serialises byte for byte; dropping its macOS target makes it 0.1.
+        KblDocument mac;
+        QVERIFY(mac.open(data("macos-option-deadkeys.kbl.json")));
+        QFile m(data("macos-option-deadkeys.kbl.json"));
+        QVERIFY(m.open(QIODevice::ReadOnly));
+        QCOMPARE(mac.bytes(), m.readAll());
+        QCOMPARE(mac.formatVersion(), QStringLiteral("0.2"));
+        mac.removeAt(QStringLiteral("/targets/macos"));
+        QCOMPARE(mac.formatVersion(), QStringLiteral("0.1"));
+
+        // Pinning (mergeMissing) a 0.2-only target into a 0.1 file raises the version in the same step.
+        KblDocument pin;
+        QVERIFY(pin.open(data("minimal-qwerty.kbl.json")));
+        const QByteArray before = pin.bytes();
+        ParseError e;
+        JPtr other = parseValue(R"({"targets": {"xkb": {"symbolsName": "demo"}}})", &e);
+        QCOMPARE(pin.mergeMissing(other, QStringLiteral("Pin defaults")), 1);
+        QCOMPARE(pin.formatVersion(), QStringLiteral("0.2"));
+        pin.undo();
+        QCOMPARE(pin.bytes(), before);
+    }
+
     void schemaFields()
     {
         SchemaModel s;

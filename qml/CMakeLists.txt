@@ -22,7 +22,8 @@ qt_add_qml_module(yakbdui
     Ui.qml
   RESOURCES
     templates/new.kbl.json
-    schema/kbl.schema.json
+    schema/0.1/kbl.schema.json
+    schema/0.2/kbl.schema.json
     icons/yakbd.svg
 )
 target_link_libraries(yakbdui PRIVATE Qt6::Quick Qt6::QuickControls2)

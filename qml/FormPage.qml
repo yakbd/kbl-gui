@@ -10,6 +10,11 @@ Item {
     property string basePointer: ""
     property var sections: []
     property string highlight: ""
+    // A part of the file that a later format version added (targets.macos in a 0.1 file): its first value raises
+    // the file's version (the editor writes the lowest version that holds the file, SPEC §1.1).
+    readonly property string fileVersion: (doc.revision, doc.formatVersion())
+    readonly property string pageVersion: schema.versionFor(basePointer)
+    readonly property bool newerVersion: fileVersion !== "" && pageVersion !== "" && pageVersion > fileVersion
 
     function reveal(pointer) {
         highlight = ""
@@ -30,7 +35,7 @@ Item {
 
         ColumnLayout {
             id: content
-            width: Math.min(scroll.availableWidth, 900)
+            width: Math.min(scroll.availableWidth - Ui.pad * 4, 900)
             x: Ui.pad * 2
             spacing: Ui.gap
 
@@ -42,6 +47,15 @@ Item {
             }
             Label {
                 text: page.note
+                color: Ui.subtle
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                Layout.maximumWidth: 720
+                Layout.bottomMargin: Ui.gap
+            }
+            Label {
+                visible: page.newerVersion
+                text: qsTr("New in format version %1. This file is version %2: the first value you set here makes it a %1 file.").arg(page.pageVersion).arg(page.fileVersion)
                 color: Ui.subtle
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true

@@ -307,11 +307,105 @@ bool KblDocument::apply(const Edit &e, bool forward)
     return true;
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// Format version (SPEC §1.1): a file is written as 0.2 only when it uses a 0.2-only member. An edit that adds the
+// first one raises `kbl` (and a `$schema` naming the version's schema) in the same undo step; an edit that removes
+// the last one lowers it again. Opening and saving never change the version.
+
+static bool family02(const QString &kind)
+{
+    const QString fam = kind.section(QLatin1Char('.'), 0, 0);
+    return fam == QLatin1String("macos") || fam == QLatin1String("macosDefault") || fam == QLatin1String("xkb")
+           || fam == QLatin1String("xkbDefault");
+}
+
+static bool onLoss02(const JPtr &onLoss)
+{
+    JPtr kinds = onLoss ? onLoss->member(QStringLiteral("kinds")) : JPtr();
+    if (!kinds || kinds->type != JNode::Object)
+        return false;
+    for (const auto &m : kinds->members)
+        if (family02(m.key))
+            return true;
+    return false;
+}
+
+QString KblDocument::requiredVersion(const JPtr &root)
+{
+    if (!root || root->type != JNode::Object)
+        return QStringLiteral("0.1");
+    for (const QString &p : kVersion02Members)
+        if (resolve(root, p))
+            return QStringLiteral("0.2");
+    if (JPtr f = resolve(root, QStringLiteral("/metadata/provenance/format"));
+        f && f->type == JNode::String && (f->str == QLatin1String("keylayout") || f->str == QLatin1String("xkb")))
+        return QStringLiteral("0.2");
+    if (onLoss02(root->member(QStringLiteral("onLoss"))))
+        return QStringLiteral("0.2");
+    if (JPtr t = root->member(QStringLiteral("targets")); t && t->type == JNode::Object)
+        for (const auto &m : t->members)
+            if (m.value->type == JNode::Object && onLoss02(m.value->member(QStringLiteral("onLoss"))))
+                return QStringLiteral("0.2");
+    return QStringLiteral("0.1");
+}
+
+const QStringList KblDocument::kVersion02Members{QStringLiteral("/targets/macos"), QStringLiteral("/targets/xkb")};
+
+QString KblDocument::formatVersion() const
+{
+    JPtr k = node(QStringLiteral("/kbl"));
+    return k && k->type == JNode::String ? k->str : QString();
+}
+
+void KblDocument::addVersionEdits(std::vector<Edit> &edits) const
+{
+    const QString have = formatVersion();
+    if (have != QLatin1String("0.1") && have != QLatin1String("0.2"))
+        return; // a version this editor does not know: never guess
+    for (const Edit &e : edits)
+        if (e.parent.isEmpty() && (e.key == QLatin1String("kbl") || e.key == QLatin1String("$schema")))
+            return; // the user edits the version itself
+    const QString before = requiredVersion(m_doc.root);
+    auto *self = const_cast<KblDocument *>(this);
+    size_t applied = 0;
+    for (; applied < edits.size(); ++applied)
+        if (!self->apply(edits[applied], true))
+            break;
+    const QString after = requiredVersion(m_doc.root);
+    for (size_t i = applied; i-- > 0;)
+        self->apply(edits[i], false);
+    QString want;
+    if (have == QLatin1String("0.1") && after == QLatin1String("0.2"))
+        want = after;
+    else if (have == QLatin1String("0.2") && before == QLatin1String("0.2") && after == QLatin1String("0.1"))
+        want = after;
+    if (want.isEmpty())
+        return;
+    Edit k;
+    k.key = QStringLiteral("kbl");
+    k.index = m_doc.root->indexOf(k.key);
+    k.before = node(QStringLiteral("/kbl"));
+    k.after = JNode::makeString(want);
+    edits.push_back(k);
+    const QString oldId = QStringLiteral("/schema/%1/kbl.schema.json").arg(have);
+    if (JPtr s = node(QStringLiteral("/$schema")); s && s->type == JNode::String && s->str.endsWith(oldId)) {
+        Edit e;
+        e.key = QStringLiteral("$schema");
+        e.index = m_doc.root->indexOf(e.key);
+        e.before = s;
+        e.after = JNode::makeString(s->str.left(s->str.size() - oldId.size())
+                                    + QStringLiteral("/schema/%1/kbl.schema.json").arg(want));
+        edits.push_back(e);
+    }
+}
+
 bool KblDocument::applyEdits(const std::vector<Edit> &edits, const QString &label)
 {
     if (edits.empty())
         return false;
-    m_undo.push(new EditCommand(this, edits, label)); // push() runs redo()
+    std::vector<Edit> all = edits;
+    addVersionEdits(all);
+    m_undo.push(new EditCommand(this, all, label)); // push() runs redo()
     return true;
 }
 

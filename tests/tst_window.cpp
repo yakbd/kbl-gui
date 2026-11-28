@@ -9,6 +9,7 @@
 #include <QDir>
 #include <QGuiApplication>
 #include <QPalette>
+#include <QPointer>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickItem>
@@ -208,6 +209,69 @@ private slots:
             }
         }
         win->setWidth(oldWidth);
+    }
+
+
+    // The target picker in the Problems panel: with a CLI that has targets it lists them, fits the panel's header at
+    // the smallest window width, and picking macOS validates for macOS.
+    void targetPicker()
+    {
+        cli->locate();
+        QStringList names;
+        for (const QVariant &t : cli->targets())
+            names << t.toMap().value(QStringLiteral("name")).toString();
+        if (!names.contains(QLatin1String("macos")))
+            QSKIP("this yakbd has no macos target");
+        QMetaObject::invokeMethod(win, "openPath", Q_ARG(QVariant, data("macos-option-deadkeys.kbl.json")));
+        QVERIFY(doc->loaded());
+        const int oldWidth = win->width();
+        if (760 <= win->screen()->availableGeometry().width()) {
+            win->setWidth(760);
+            QTRY_COMPARE(win->width(), 760);
+        }
+        QQuickItem *picker = win->findChild<QQuickItem *>(QStringLiteral("targetPicker"));
+        QVERIFY(picker);
+        QTRY_VERIFY(picker->isVisible());
+        QQuickItem *validate = win->findChild<QQuickItem *>(QStringLiteral("validateButton"));
+        QVERIFY(validate);
+        const QPointF right = validate->mapToScene(QPointF(validate->width(), 0));
+        QVERIFY2(right.x() <= win->width(), qPrintable(QStringLiteral("Validate ends at %1 of %2").arg(right.x()).arg(win->width())));
+        QVERIFY(picker->mapToScene(QPointF(picker->width(), 0)).x() <= validate->mapToScene(QPointF(0, 0)).x());
+        cli->setTarget(QStringLiteral("macos"));
+        QTRY_COMPARE(picker->property("currentIndex").toInt(), int(names.indexOf(QStringLiteral("macos"))));
+        QTRY_VERIFY_WITH_TIMEOUT(cli->reportTarget() == QLatin1String("macos") && !cli->busy(), 30000);
+        QVERIFY(report->lossCount() > 0);
+        QObject *pin = nullptr;
+        for (QObject *o : win->findChildren<QObject *>())
+            if (o->inherits("QQuickAction") && o->property("text").toString().remove(QLatin1Char('&')) == QLatin1String("Pin macOS Defaults"))
+                pin = o;
+        QVERIFY(pin);
+        cli->setTarget(QStringLiteral("windows"));
+        QTRY_COMPARE(picker->property("currentIndex").toInt(), 0);
+        win->setWidth(oldWidth);
+    }
+
+
+    // The first macOS value typed into a 0.1 file makes it 0.2 (one undo step) and the field keeps the focus: the
+    // form is not rebuilt when the version changes.
+    void versionFlipKeepsFocus()
+    {
+        QMetaObject::invokeMethod(win, "openPath", Q_ARG(QVariant, data("minimal-qwerty.kbl.json")));
+        QVERIFY(doc->loaded());
+        QCOMPARE(doc->formatVersion(), QStringLiteral("0.1"));
+        doc->navigate(QStringLiteral("/targets/macos/layoutName"));
+        QTRY_VERIFY(win->activeFocusItem() && win->activeFocusItem()->inherits("QQuickTextInput"));
+        QPointer<QQuickItem> field = win->activeFocusItem();
+        for (const char c : {'D', 'e', 'm', 'o'})
+            QTest::keyClick(win, c);
+        QTest::keyClick(win, Qt::Key_Return);
+        QTRY_COMPARE(doc->formatVersion(), QStringLiteral("0.2"));
+        QCOMPARE(doc->valueAt(QStringLiteral("/targets/macos/layoutName")).toString(), QStringLiteral("Demo"));
+        QTest::qWait(200);
+        QVERIFY(field);
+        QCOMPARE(win->activeFocusItem(), field.data());
+        doc->undo();
+        QCOMPARE(doc->formatVersion(), QStringLiteral("0.1"));
     }
 
     void cleanupTestCase()

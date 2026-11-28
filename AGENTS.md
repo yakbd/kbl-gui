@@ -13,6 +13,7 @@ pin, compile, installer). It holds no Windows facts (CLEAN-ROOM.md).
     sh packaging/linux/package.sh build build/cli/yakbd dist   # AppImage + runtime sources
     tools/distro-check.sh dist                      # the AppImage on 5 distributions in Docker/Podman
     tools/desktop-check.sh dist                     # the AppImage on KDE Plasma (X11, portal dialog) and Wayland (weston, KWin)
+    tools/targets-check.sh build/yakbd-gui out      # each target end to end against yakbd's own verdict: out/summary.txt
     sh tools/check-doc-links.sh                  # release links: releases/latest; doc links: blob/main (CI checks)
 
 The build host for Linux is Ubuntu 22.04 (`tools/docker/build.Dockerfile`, the same as CI) so that the binaries run
@@ -26,7 +27,10 @@ on glibc 2.35 and later. CMake 3.25+ is needed (Qt 6.12's minimum). Configuring 
 - `src/kbldocument.*`, `src/kbllayout.cpp`: the open document, undo/redo (QUndoStack of pointer edits), views for
   QML (layers, keyboard rows, bindings, dead keys).
 - `src/cli.*`: QProcess runs of `yakbd`; `src/reportmodel.*`: the `-report` JSON (format 1, with a fallback for
-  0.1.0-preview.1); `src/schemamodel.*`: forms from the bundled schema.
+  0.1.0-preview.1); `src/schemamodel.*`: forms from the bundled schemas (`qml/schema/<version>/`, the file's
+  version first, the newest for members an older version lacks). Targets (`docs/targets.md`): `Cli` asks the CLI
+  which ones it has (exit code 2 = unknown target or command) and passes `-target`; Windows keeps the command lines
+  of the CLI before targets (`validate -windows`, no `-target`), so the pinned release still works.
 - `qml/`: the QML module `Yakbd` (static plugin). `Main.qml` holds the actions, menus and dialogs.
 - `VERIFIED.md`: what was checked where, with run ids; keep it current when a platform check runs.
 - `tests/`: Qt Test (`tst_jsontree`, `tst_document`, `tst_cli`), Qt Quick Test (`tst_qml` + `qml/tst_views.qml`),
@@ -44,6 +48,8 @@ on glibc 2.35 and later. CMake 3.25+ is needed (Qt 6.12's minimum). Configuring 
 - Every Windows decision stays in the CLI. If the editor seems to need a Windows fact, ask the CLI (a report entry,
   a command) instead.
 - Each user edit is one undo step; text fields commit on Enter or focus loss, not per keystroke.
+- Format versions (SPEC §1.1) change only by edits, in `KblDocument::applyEdits`: the first 0.2-only member raises
+  `kbl`/`$schema` in the same undo step, removing the last lowers them. Opening and saving never change bytes.
 
 ## Gotchas
 

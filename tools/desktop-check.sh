@@ -3,15 +3,20 @@
 # packages (tools/docker/desktops.Dockerfile); rootless Docker or Podman is enough. One RESULT line per check;
 # screenshots and logs in <dist>/desktop-check/.
 #   tools/desktop-check.sh <folder with YAKBD-Editor-*-x86_64.AppImage>
+# With TARGETS_CLI=<a Linux yakbd that has targets> it also runs tools/targets-check.sh on KDE Plasma (X11) with that
+# yakbd: <folder>/desktop-check/targets/summary.txt.
 set -eu
 if [ "${1:-}" != --inner ]; then
   dist=$(cd "$1" && pwd)
   here=$(cd "$(dirname "$0")" && pwd)
   engine=${CONTAINER_ENGINE:-docker}
-  $engine build -q -t yakbd-gui-desktops:fc43 -f "$here/docker/desktops.Dockerfile" "$here/docker" >/dev/null
+  image=${DESKTOPS_IMAGE:-yakbd-gui-desktops:fc43}
+  $engine build -q -t "$image" -f "$here/docker/desktops.Dockerfile" "$here/docker" >/dev/null
   mkdir -p "$dist/desktop-check"
-  exec $engine run --rm -v "$dist:/dist" -v "$here:/tools:ro" -v "$here/../tests/data:/data:ro" \
-    yakbd-gui-desktops:fc43 dbus-run-session -- sh /tools/desktop-check.sh --inner
+  cli=""
+  [ -z "${TARGETS_CLI:-}" ] || cli="-v $(cd "$(dirname "$TARGETS_CLI")" && pwd)/$(basename "$TARGETS_CLI"):/cli/yakbd:ro"
+  exec $engine run --rm -v "$dist:/dist" -v "$here:/tools:ro" -v "$here/../tests/data:/data:ro" $cli \
+    "$image" dbus-run-session -- sh /tools/desktop-check.sh --inner
 fi
 
 # ---- inside the container, in a D-Bus session ----
@@ -45,6 +50,13 @@ result kde-x11-light "$(grab kde-x11-light)"
 cp /usr/share/color-schemes/BreezeDark.colors "$HOME/.config/kdeglobals"
 result kde-x11-dark "$(grab kde-x11-dark)"
 grep -h "platformtheme\|PlatformTheme" "$out"/kde-x11-*.log | head -3 > "$out/kde-x11-theme.txt" || true
+
+# 1b. The target picker end to end on KDE Plasma (X11), with the yakbd given as TARGETS_CLI (docs/targets.md).
+if [ -x /cli/yakbd ]; then
+  YAKBD_CLI=/cli/yakbd sh /tools/targets-check.sh "$gui" "$out/targets" /data/macos-option-deadkeys.kbl.json \
+    /data/xkb-caps-deadkeys.kbl.json /data/minimal-qwerty.kbl.json > "$out/targets.log" 2>&1
+  result targets "$(cat "$out/targets/totals.txt" 2>/dev/null || echo "no summary (see targets.log)") (desktop-check/targets/summary.txt)"
+fi
 
 # 2. KDE's file dialog through the XDG desktop portal (Qt's xdgdesktopportal theme; the KDE backend draws it).
 /usr/libexec/xdg-desktop-portal-kde >"$out/portal-kde.log" 2>&1 &

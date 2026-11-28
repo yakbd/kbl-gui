@@ -6,7 +6,8 @@ namespace kbl {
 
 SchemaModel::SchemaModel(QObject *parent) : QObject(parent)
 {
-    loadFile(QStringLiteral(":/qt/qml/Yakbd/schema/kbl.schema.json"));
+    loadFile(QStringLiteral(":/qt/qml/Yakbd/schema/0.1/kbl.schema.json"));
+    loadFile(QStringLiteral(":/qt/qml/Yakbd/schema/0.2/kbl.schema.json"));
 }
 
 bool SchemaModel::loadFile(const QString &path)
@@ -15,22 +16,69 @@ bool SchemaModel::loadFile(const QString &path)
     if (!f.open(QIODevice::ReadOnly))
         return false;
     ParseError e;
-    m_root = parseValue(f.readAll(), &e);
-    if (!m_root)
+    Schema s;
+    s.root = parseValue(f.readAll(), &e);
+    if (!s.root)
         return false;
-    if (JPtr id = m_root->member(QStringLiteral("$id")))
-        m_id = id->str;
+    if (JPtr id = s.root->member(QStringLiteral("$id")))
+        s.id = id->str;
+    if (JPtr kbl = resolve(s.root, QStringLiteral("/properties/kbl/const")))
+        s.version = kbl->str;
+    m_schemas.push_back(s);
     return true;
 }
 
-JPtr SchemaModel::deref(const JPtr &n) const
+QStringList SchemaModel::versions() const
+{
+    QStringList out;
+    for (const auto &s : m_schemas)
+        out << s.version;
+    return out;
+}
+
+void SchemaModel::setVersion(const QString &v)
+{
+    if (v == m_version)
+        return;
+    m_version = v;
+    emit versionChanged();
+}
+
+const SchemaModel::Schema *SchemaModel::current() const
+{
+    if (m_schemas.empty())
+        return nullptr;
+    for (const auto &s : m_schemas)
+        if (s.version == m_version)
+            return &s;
+    return &m_schemas.back();
+}
+
+QString SchemaModel::schemaId() const
+{
+    const Schema *s = current();
+    return s ? s->id : QString();
+}
+
+const SchemaModel::Schema *SchemaModel::schemaWith(const QString &schemaPointer) const
+{
+    const Schema *cur = current();
+    if (!cur || resolve(cur->root, schemaPointer))
+        return cur;
+    for (auto it = m_schemas.rbegin(); it != m_schemas.rend(); ++it)
+        if (resolve(it->root, schemaPointer))
+            return &*it;
+    return cur;
+}
+
+JPtr SchemaModel::deref(const Schema &s, const JPtr &n)
 {
     JPtr cur = n;
     for (int guard = 0; cur && guard < 8; ++guard) {
         JPtr ref = cur->member(QStringLiteral("$ref"));
         if (!ref || !ref->str.startsWith(QLatin1Char('#')))
             break;
-        JPtr target = resolve(m_root, ref->str.mid(1));
+        JPtr target = resolve(s.root, ref->str.mid(1));
         if (!target)
             break;
         // A $ref with siblings (description): merge, the siblings win.
@@ -57,7 +105,10 @@ static QString str(const JPtr &n, const char *key)
 QVariantList SchemaModel::fields(const QString &schemaPointer) const
 {
     QVariantList out;
-    JPtr obj = deref(resolve(m_root, schemaPointer));
+    const Schema *s = schemaWith(schemaPointer);
+    if (!s)
+        return out;
+    JPtr obj = deref(*s, resolve(s->root, schemaPointer));
     if (!obj)
         return out;
     JPtr props = obj->member(QStringLiteral("properties"));
@@ -69,7 +120,7 @@ QVariantList SchemaModel::fields(const QString &schemaPointer) const
             required << x->str;
     for (const auto &m : props->members) {
         const QString fieldPtr = schemaPointer + QStringLiteral("/properties/") + escapePointerToken(m.key);
-        JPtr f = deref(m.value);
+        JPtr f = deref(*s, m.value);
         QVariantMap field;
         field[QStringLiteral("name")] = m.key;
         field[QStringLiteral("schema")] = fieldPtr;
@@ -98,7 +149,7 @@ QVariantList SchemaModel::fields(const QString &schemaPointer) const
         } else if (type == QLatin1String("object") && f->member(QStringLiteral("properties"))) {
             kind = QStringLiteral("object");
         } else if (type == QLatin1String("array")) {
-            JPtr items = deref(f->member(QStringLiteral("items")));
+            JPtr items = deref(*s, f->member(QStringLiteral("items")));
             JPtr ien = items ? items->member(QStringLiteral("enum")) : JPtr();
             if (ien && ien->type == JNode::Array) {
                 QStringList opts;
@@ -116,12 +167,12 @@ QVariantList SchemaModel::fields(const QString &schemaPointer) const
     return out;
 }
 
-QString SchemaModel::schemaFor(const QString &documentPointer) const
+QString SchemaModel::schemaFor(const Schema &s, const QString &documentPointer)
 {
     QString ptr;
-    JPtr cur = m_root;
+    JPtr cur = s.root;
     for (const QString &t : kbl::splitPointer(documentPointer)) {
-        cur = deref(cur);
+        cur = deref(s, cur);
         if (!cur)
             return {};
         if (JPtr props = cur->member(QStringLiteral("properties")); props && props->member(t)) {
@@ -140,12 +191,35 @@ QString SchemaModel::schemaFor(const QString &documentPointer) const
     return ptr;
 }
 
+QString SchemaModel::schemaFor(const QString &documentPointer) const
+{
+    const Schema *cur = current();
+    if (!cur)
+        return {};
+    const QString p = schemaFor(*cur, documentPointer);
+    if (!p.isEmpty() || documentPointer.isEmpty())
+        return p;
+    for (auto it = m_schemas.rbegin(); it != m_schemas.rend(); ++it)
+        if (const QString q = schemaFor(*it, documentPointer); !q.isEmpty())
+            return q;
+    return {};
+}
+
+QString SchemaModel::versionFor(const QString &documentPointer) const
+{
+    for (const auto &s : m_schemas)
+        if (documentPointer.isEmpty() || !schemaFor(s, documentPointer).isEmpty())
+            return s.version;
+    return {};
+}
+
 QString SchemaModel::describe(const QString &documentPointer) const
 {
     const QString sp = schemaFor(documentPointer);
     if (sp.isEmpty() && !documentPointer.isEmpty())
         return {};
-    return str(deref(resolve(m_root, sp)), "description");
+    const Schema *s = schemaWith(sp);
+    return s ? str(deref(*s, resolve(s->root, sp)), "description") : QString();
 }
 
 } // namespace kbl

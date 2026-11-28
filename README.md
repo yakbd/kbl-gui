@@ -8,9 +8,10 @@ build choices of each target. Checking, converting and building are done by the 
 tool](https://github.com/yakbd/yakbd-cli), which ships with the editor: the editor never makes a platform decision
 itself.
 
-Today the build target is Windows: the editor opens `.klc` files, CLDR keyboard XML and Windows layout DLLs, and
-builds Windows layout DLLs and installers. The official formats of other operating systems are planned next, then
-third-party formats such as Keyman; the editor gets each one through the `yakbd` tool.
+The build targets are Windows (layout DLLs and installers), macOS (layout bundles) and Linux (XKB files for Wayland
+and X11), picked in the editor ([docs/targets.md](docs/targets.md)); macOS and Linux need a `yakbd` that has those
+targets, and format version 0.2 (a draft). The editor opens `.klc` files, CLDR keyboard XML and Windows layout
+DLLs. Third-party formats such as Keyman come later; the editor gets each one through the `yakbd` tool.
 
 **Status: preview** (see the [latest release](https://github.com/yakbd/yakbd-gui/releases/latest)). Built and tested on
 Linux, Windows and macOS (CI), and in a Windows 11 guest; what is still open is in [VERIFIED.md](VERIFIED.md).
@@ -26,12 +27,16 @@ Linux, Windows and macOS (CI), and in a Windows 11 guest; what is still open is 
 - **Key panel**: what the key does in the current layer (text, code points, dead key, key reference, nothing, no
   binding), its scan code and name, and every layer at a glance.
 - **Dead keys**: the composition tables, the character each dead key stands for and what happens without a match.
-- **Metadata, Behaviour, Windows Target, Other Targets**: forms generated from the format's JSON Schema; an empty
-  field leaves the choice to the format's default or the tool's default rule.
+- **Metadata, Behaviour, Windows Target, macOS Target, Linux Target, Other Targets**: forms generated from the
+  format's JSON Schema (of the file's format version, 0.1 or 0.2); an empty field leaves the choice to the format's
+  default or the tool's default rule.
 - **JSON**: any part of the file as JSON, for what the forms do not cover.
-- **Problems panel**: `yakbd validate -windows` runs shortly after every change; problems, losses and the choices
-  taken from default rules link to the field they concern. **Pin Windows Defaults** writes those choices into the
-  file (one undo step). **Build Layout DLLs** and **Build Installer** run `yakbd compile` and `yakbd installer`.
+- **Target** (Layout › Target, or the list beside Validate): Windows, macOS or Linux (XKB); what Validate checks and
+  the Build commands build ([docs/targets.md](docs/targets.md)).
+- **Problems panel**: `yakbd validate` for the target runs shortly after every change; problems, losses and the
+  choices taken from default rules link to the field they concern. **Pin Defaults** writes those choices into the
+  file (one undo step). **Build** (Layout DLLs, the macOS bundle, the XKB files) and **Build Installer/Archive**
+  (the Windows installer, the macOS zip, the Linux archive) run `yakbd compile` and `yakbd installer`.
 - Undo/redo for every edit, recent files, unsaved-changes prompts, light and dark appearance (follows the system,
   or View › Appearance).
 
@@ -126,7 +131,7 @@ The tests run the released CLI: on Linux x86-64 the configure step fetches the r
 
 `QT_QUICK_CONTROLS_STYLE` overrides the style. Options for testing: `--self-test FILE` (open, edit, save, reopen
 and validate without a window), `--grab out.png` (screenshot and quit), `--appearance light|dark`, `--page`,
-`--select POINTER`, `--validate`.
+`--select POINTER`, `--validate`, `--target NAME`, `--build DIR` (docs/targets.md).
 
 ## What is verified
 

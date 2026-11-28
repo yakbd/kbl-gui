@@ -25,6 +25,18 @@ ApplicationWindow {
 
     Component.onCompleted: Ui.p = Qt.binding(function () { return root.palette })
 
+    // The forms use the schema of the file's format version.
+    Binding {
+        target: schema
+        property: "version"
+        value: (doc.revision, doc.formatVersion())
+    }
+
+    // The picked target (Layout › Target, or the Problems panel) and the words of its build commands.
+    readonly property var targetInfo: cli.targetInfo
+    readonly property string targetLabel: targetInfo.label || qsTr("Windows")
+    readonly property bool windowsTarget: cli.target === "windows"
+
     // ---------------------------------------------------------------------------------------------------------
     // Called from C++ (command line) and from the menus.
     function openPath(path) {
@@ -57,6 +69,16 @@ ApplicationWindow {
         const i = pages.findIndex(p => p.key === String(name))
         if (i >= 0)
             sidebar.currentIndex = i
+    }
+
+    // Build and Build Installer/Archive for the picked target (the dialogs call these; so does --build).
+    function buildLayout(folder) {
+        root.status(qsTr("Building…"))
+        cli.compile(String(folder))
+    }
+    function buildArchive(file) {
+        root.status(root.windowsTarget ? qsTr("Building the installer…") : qsTr("Building the %1 archive…").arg(root.targetLabel))
+        cli.buildInstaller(String(file))
     }
 
     function showOpenDialog() {
@@ -112,6 +134,12 @@ ApplicationWindow {
         } else if (t[0] === "targets" && t[1] === "windows") {
             showPage("windows")
             windowsPage.reveal(pointer)
+        } else if (t[0] === "targets" && t[1] === "macos") {
+            showPage("macos")
+            macosPage.reveal(pointer)
+        } else if (t[0] === "targets" && t[1] === "xkb") {
+            showPage("xkb")
+            xkbPage.reveal(pointer)
         } else if (t[0] === "targets") {
             showPage("targets")
             targetsPage.reveal(pointer)
@@ -142,6 +170,11 @@ ApplicationWindow {
                 validateSoon.restart()
             if (!ok && op !== "validate")
                 root.showProblems = true
+        }
+        function onTargetChanged() {
+            if (report.total > 0)
+                report.stale = true
+            validateSoon.restart()
         }
         function onImported(source) {
             root.importedFrom = source
@@ -259,22 +292,22 @@ ApplicationWindow {
     }
     Action {
         id: pinAction
-        text: qsTr("&Pin Windows Defaults")
-        enabled: doc.loaded && cli.available && !cli.busy
+        text: qsTr("&Pin %1 Defaults").arg(root.targetLabel)
+        enabled: doc.loaded && cli.available && !cli.busy && root.targetInfo.pin !== false
         onTriggered: cli.pinDefaults()
     }
     Action {
         id: compileAction
-        text: qsTr("&Build Layout DLLs…")
+        text: root.windowsTarget ? qsTr("&Build Layout DLLs…") : qsTr("&Build %1 Layout…").arg(root.targetLabel)
         shortcut: "Ctrl+B"
         enabled: doc.loaded && cli.available && !cli.busy
         onTriggered: compileDialog.open()
     }
     Action {
         id: installerAction
-        text: qsTr("Build &Installer…")
+        text: root.windowsTarget ? qsTr("Build &Installer…") : qsTr("Build %1 &Archive…").arg(root.targetLabel)
         shortcut: "Ctrl+Shift+B"
-        enabled: doc.loaded && cli.available && !cli.busy
+        enabled: doc.loaded && cli.available && !cli.busy && root.targetInfo.installer !== false
         onTriggered: installerDialog.open()
     }
     Action {
@@ -363,6 +396,24 @@ ApplicationWindow {
         }
         Menu {
             title: qsTr("&Layout")
+            Menu {
+                id: targetMenu
+                objectName: "targetMenu"
+                title: qsTr("&Target")
+                Instantiator {
+                    model: cli.targets
+                    delegate: MenuItem {
+                        required property var modelData
+                        text: modelData.label
+                        checkable: true
+                        checked: cli.target === modelData.name
+                        onTriggered: cli.setTarget(modelData.name)
+                    }
+                    onObjectAdded: (index, object) => targetMenu.insertItem(index, object)
+                    onObjectRemoved: (index, object) => targetMenu.removeItem(object)
+                }
+            }
+            MenuSeparator {}
             MenuItem { action: validateAction }
             MenuItem { action: pinAction }
             MenuSeparator {}
@@ -433,24 +484,19 @@ ApplicationWindow {
     }
     FolderDialog {
         id: compileDialog
-        title: qsTr("Folder for the Layout DLLs")
+        title: root.windowsTarget ? qsTr("Folder for the Layout DLLs") : qsTr("Folder for the %1 Layout").arg(root.targetLabel)
         currentFolder: appSettings.lastFolder ? appSettings.fromLocalFile(appSettings.lastFolder) : ""
-        onAccepted: {
-            root.status(qsTr("Building…"))
-            cli.compile(appSettings.toLocalFile(selectedFolder))
-        }
+        onAccepted: root.buildLayout(appSettings.toLocalFile(selectedFolder))
     }
     FileDialog {
         id: installerDialog
-        title: qsTr("Save Installer As")
+        title: root.windowsTarget ? qsTr("Save Installer As") : qsTr("Save %1 Archive As").arg(root.targetLabel)
         fileMode: FileDialog.SaveFile
-        defaultSuffix: "exe"
-        nameFilters: [qsTr("Windows programs (*.exe)")]
+        readonly property string suffix: root.targetInfo.installerSuffix || ""
+        defaultSuffix: suffix.replace(/^\./, "")
+        nameFilters: suffix !== "" ? [(root.targetInfo.installerFilter || qsTr("Files")) + " (*" + suffix + ")"] : [qsTr("All files (*)")]
         currentFolder: appSettings.lastFolder ? appSettings.fromLocalFile(appSettings.lastFolder) : ""
-        onAccepted: {
-            root.status(qsTr("Building the installer…"))
-            cli.buildInstaller(appSettings.toLocalFile(selectedFile))
-        }
+        onAccepted: root.buildArchive(appSettings.toLocalFile(selectedFile))
     }
     MessageDialog {
         id: unsavedDialog
@@ -490,6 +536,8 @@ ApplicationWindow {
         { key: "metadata", title: qsTr("Metadata") },
         { key: "settings", title: qsTr("Behaviour") },
         { key: "windows", title: qsTr("Windows Target") },
+        { key: "macos", title: qsTr("macOS Target") },
+        { key: "xkb", title: qsTr("Linux Target") },
         { key: "targets", title: qsTr("Other Targets") },
         { key: "json", title: qsTr("JSON") }
     ]
@@ -667,8 +715,20 @@ ApplicationWindow {
                 FormPage {
                     id: windowsPage
                     heading: qsTr("Windows Target")
-                    note: qsTr("Choices for the Windows build. Empty fields use the default rules; Layout › Pin Windows Defaults writes the chosen values into the file. The Defaults tab of the Problems panel lists every choice taken from a rule.")
+                    note: qsTr("Choices for the Windows build. Empty fields use the default rules; with Windows as the target (Layout › Target), Layout › Pin Windows Defaults writes the chosen values into the file. The Defaults tab of the Problems panel lists every choice taken from a rule.")
                     basePointer: "/targets/windows"
+                }
+                FormPage {
+                    id: macosPage
+                    heading: qsTr("macOS Target")
+                    note: qsTr("Choices for the macOS build: a .keylayout file in a layout bundle. Empty fields use the default rules; with macOS as the target (Layout › Target), Layout › Pin macOS Defaults writes the chosen values into the file.")
+                    basePointer: "/targets/macos"
+                }
+                FormPage {
+                    id: xkbPage
+                    heading: qsTr("Linux Target (XKB)")
+                    note: qsTr("Choices for the Linux build: XKB symbols and Compose files for Wayland and X11. Empty fields use the default rules; with Linux (XKB) as the target (Layout › Target), Layout › Pin Linux (XKB) Defaults writes the chosen values into the file.")
+                    basePointer: "/targets/xkb"
                 }
                 FormPage {
                     id: targetsPage

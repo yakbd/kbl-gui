@@ -26,6 +26,7 @@ AppSettings::AppSettings(QObject *parent) : QObject(parent)
         m_appearance = s.value(QStringLiteral("appearance"), QStringLiteral("system")).toString();
         m_cliPath = s.value(QStringLiteral("cliPath")).toString();
         m_lastFolder = s.value(QStringLiteral("lastFolder")).toString();
+        m_target = s.value(QStringLiteral("target"), m_target).toString();
     }
 }
 
@@ -38,6 +39,7 @@ void AppSettings::store()
     s.setValue(QStringLiteral("appearance"), m_appearance);
     s.setValue(QStringLiteral("cliPath"), m_cliPath);
     s.setValue(QStringLiteral("lastFolder"), m_lastFolder);
+    s.setValue(QStringLiteral("target"), m_target);
 }
 
 void AppSettings::addRecent(const QString &path)
@@ -221,6 +223,19 @@ QString AppSettings::fileName(const QString &path) const
 QString AppSettings::nativePath(const QString &path) const
 {
     return QDir::toNativeSeparators(path);
+}
+
+} // namespace kbl
+
+namespace kbl {
+
+void AppSettings::setTarget(const QString &t)
+{
+    if (t.isEmpty() || t == m_target)
+        return;
+    m_target = t;
+    store();
+    emit targetChanged();
 }
 
 } // namespace kbl

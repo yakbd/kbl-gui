@@ -215,6 +215,73 @@ private slots:
         QVERIFY2(r.value(1).toBool(), qPrintable(r.value(2).toString()));
         QVERIFY(QFileInfo(setup).size() > 10000);
     }
+
+    // The target picker: a CLI with targets lists them; validate, pin, compile and installer run for the picked one.
+    // A CLI from before targets (the pinned 0.1.0-preview.3) offers Windows only and gets the old command lines.
+    void targets()
+    {
+        KblDocument doc;
+        QVERIFY(doc.open(data("minimal-qwerty.kbl.json")));
+        const QByteArray original = doc.bytes();
+        ReportModel report;
+        Cli cli(&doc, &report, nullptr);
+        cli.locate();
+        QStringList names;
+        for (const QVariant &t : cli.targets())
+            names << t.toMap().value(QStringLiteral("name")).toString();
+        QCOMPARE(names.value(0), QStringLiteral("windows"));
+        cli.setTarget(QStringLiteral("macos"));
+        if (!names.contains(QLatin1String("macos"))) {
+            QCOMPARE(cli.target(), QStringLiteral("windows")); // an unknown pick falls back to Windows
+            QSKIP("this yakbd has no macos target");
+        }
+        QCOMPARE(cli.target(), QStringLiteral("macos"));
+        QCOMPARE(cli.targetInfo().value(QStringLiteral("installerSuffix")).toString(), QStringLiteral(".zip"));
+        QCOMPARE(cli.targetLabel(QStringLiteral("macos")), QStringLiteral("macOS"));
+        for (const QVariant &t : cli.targets()) // the XKB target hands out a .tar.gz archive
+            if (t.toMap().value(QStringLiteral("name")) == QLatin1String("xkb"))
+                QCOMPARE(t.toMap().value(QStringLiteral("installerSuffix")).toString(), QStringLiteral(".tar.gz"));
+
+        QList<QVariant> r = run(cli, [&] { return cli.validate(); });
+        QVERIFY2(r.value(1).toBool(), qPrintable(r.value(2).toString()));
+        QCOMPARE(cli.reportTarget(), QStringLiteral("macos"));
+        QVERIFY(cli.log().contains(QLatin1String("validate -target macos")));
+        bool macosDefault = false;
+        for (const ReportEntry &e : report.entries())
+            macosDefault = macosDefault || e.kind.startsWith(QLatin1String("macosDefault."));
+        QVERIFY(macosDefault);
+
+        QTemporaryDir tmp;
+        r = run(cli, [&] { return cli.compile(tmp.filePath(QStringLiteral("out"))); });
+        QVERIFY2(r.value(1).toBool(), qPrintable(r.value(2).toString()));
+        QStringList bundles = QDir(tmp.filePath(QStringLiteral("out"))).entryList({QStringLiteral("*.bundle")}, QDir::Dirs);
+        QCOMPARE(bundles.size(), 1);
+        const QString zip = tmp.filePath(QStringLiteral("layout.zip"));
+        r = run(cli, [&] { return cli.buildInstaller(zip); });
+        QVERIFY2(r.value(1).toBool(), qPrintable(r.value(2).toString()));
+        QVERIFY(QFileInfo(zip).size() > 100);
+
+        // Pin writes targets.macos into the 0.1 file, which becomes 0.2 in the same undo step.
+        r = run(cli, [&] { return cli.pinDefaults(); });
+        QVERIFY2(r.value(1).toBool(), qPrintable(r.value(2).toString()));
+        QVERIFY(doc.exists(QStringLiteral("/targets/macos")));
+        QCOMPARE(doc.formatVersion(), QStringLiteral("0.2"));
+        QCOMPARE(doc.undoText(), QStringLiteral("Pin macOS defaults"));
+        doc.undo();
+        QCOMPARE(doc.bytes(), original);
+
+        // The same for Linux (XKB), when this yakbd has it.
+        if (names.contains(QLatin1String("xkb"))) {
+            cli.setTarget(QStringLiteral("xkb"));
+            r = run(cli, [&] { return cli.pinDefaults(); });
+            QVERIFY2(r.value(1).toBool(), qPrintable(r.value(2).toString()));
+            QVERIFY(doc.exists(QStringLiteral("/targets/xkb")));
+            QCOMPARE(doc.formatVersion(), QStringLiteral("0.2"));
+            QCOMPARE(doc.undoText(), QStringLiteral("Pin Linux (XKB) defaults"));
+            doc.undo();
+            QCOMPARE(doc.bytes(), original);
+        }
+    }
 };
 
 QTEST_GUILESS_MAIN(TestCli)

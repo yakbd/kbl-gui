@@ -1,0 +1,145 @@
+name: Targets check
+
+# The target picker end to end (docs/targets.md): the editor built from this commit and a yakbd built from a yakbd-cli
+# branch open the 0.2 examples, pick each target, validate, build, build the installer or archive and save unchanged
+# (tools/targets-check.sh). Linux: Ubuntu 22.04 under Xvfb. macOS: the editor's tests with that yakbd, the targets
+# check, and the desktop checks of tools/macos-desktop-check.sh (the Layout › Target menu among them).
+# Started by hand only; each job writes summary.txt (one PASS/FAIL line per case) and fails when a case fails.
+on:
+  workflow_dispatch:
+    inputs:
+      cli_ref:
+        description: "yakbd-cli branch, tag or commit to build yakbd from"
+        type: string
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  cli:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: yakbd/yakbd-cli
+          ref: ${{ inputs.cli_ref }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build yakbd for Linux and macOS
+        run: |
+          mkdir -p out/linux out/macos
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o out/linux/yakbd ./cmd/yakbd
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o out/macos/yakbd ./cmd/yakbd
+          echo "yakbd-cli $(git rev-parse HEAD)" | tee out/commit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yakbd
+          path: out/
+          retention-days: 3
+
+  linux:
+    needs: cli
+    runs-on: ubuntu-24.04
+    container: ubuntu:22.04
+    timeout-minutes: 40
+    steps:
+      - name: Git for checkout
+        run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: yakbd
+          path: cli
+      - name: Build dependencies
+        run: sh tools/linux-build-deps.sh
+      - name: Qt cache
+        uses: actions/cache@v4
+        with:
+          path: /opt/qt-downloads
+          key: qt-linux_gcc_64-${{ hashFiles('tools/qt-pins.cmake') }}
+      - name: Qt (pinned archives, SHA-1 checked)
+        run: cmake -DPLATFORM=linux_gcc_64 -DDEST=/opt/qt -DDOWNLOADS=/opt/qt-downloads -P tools/getqt.cmake
+      - name: Build and test with that yakbd
+        env:
+          LANG: C.UTF-8
+          YAKBD_REQUIRE_CLI: 1
+        run: |
+          chmod +x cli/linux/yakbd
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH=/opt/qt -DYAKBD_CLI=$PWD/cli/linux/yakbd
+          cmake --build build
+          ctest --test-dir build --output-on-failure --timeout 300 || echo "TESTS_FAILED=1" >> "$GITHUB_ENV"
+      - name: Targets check (Xvfb)
+        env:
+          LANG: C.UTF-8
+        run: |
+          Xvfb :7 -screen 0 1440x900x24 >/dev/null 2>&1 &
+          sleep 2
+          cat cli/commit.txt
+          DISPLAY=:7 YAKBD_CLI=$PWD/cli/linux/yakbd sh tools/targets-check.sh build/yakbd-gui targets-linux
+          cp build/tests/tst_window.txt targets-linux/ 2>/dev/null || true
+          { echo "### Targets check, Linux"; echo '```'; cat targets-linux/summary.txt targets-linux/totals.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: targets-linux
+          path: targets-linux/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Result
+        run: |
+          test -z "${TESTS_FAILED:-}" || { echo "::error::tests failed"; exit 1; }
+          ! grep -q '^FAIL' targets-linux/summary.txt || { echo "::error::a targets case failed"; exit 1; }
+
+  macos:
+    needs: cli
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: yakbd
+          path: cli
+      - uses: actions/cache@v4
+        with:
+          path: ~/qt-downloads
+          key: qt-clang_64-${{ hashFiles('tools/qt-pins.cmake') }}
+      - run: cmake -DPLATFORM=clang_64 -DDEST=$HOME/qt -DDOWNLOADS=$HOME/qt-downloads -P tools/getqt.cmake
+      - name: Build and test with that yakbd
+        env:
+          YAKBD_REQUIRE_CLI: 1
+        run: |
+          chmod +x cli/macos/yakbd
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$HOME/qt -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DYAKBD_CLI=$PWD/cli/macos/yakbd
+          cmake --build build --parallel
+          ctest --test-dir build --output-on-failure --timeout 300 || echo "TESTS_FAILED=1" >> "$GITHUB_ENV"
+      - name: Targets check and desktop checks
+        run: |
+          cat cli/commit.txt
+          app="build/YAKBD Editor.app/Contents/MacOS"
+          export YAKBD_CLI=$PWD/cli/macos/yakbd
+          sh tools/targets-check.sh "$app/YAKBD Editor" targets-macos
+          sh tools/macos-desktop-check.sh "$app" "$PWD/tests/data/macos-option-deadkeys.kbl.json" targets-macos/desktop | tee targets-macos/desktop.txt
+          # The desktop checks join the summary: a FAIL stays a FAIL; "not checked" (TCC) is kept as a pass with its reason.
+          sed -n 's/^RESULT \([^:]*\): \(.*FAIL.*\)$/FAIL desktop \1: \2/p; /^RESULT [^:]*: .*FAIL/!s/^RESULT \([^:]*\): \(.*\)$/PASS desktop \1: \2/p' targets-macos/desktop.txt >> targets-macos/summary.txt
+          echo "$(grep -c '^PASS' targets-macos/summary.txt) passed, $(grep -c '^FAIL' targets-macos/summary.txt) failed" > targets-macos/totals.txt
+          # The picker beside Validate at the smallest window width, in the macOS style.
+          "$app/YAKBD Editor" --target macos --size 760x600 --page macos --grab targets-macos/picker-760.png --grab-delay 6000 \
+            tests/data/macos-option-deadkeys.kbl.json | tee -a targets-macos/grab.txt
+          cp build/tests/tst_window.txt targets-macos/ 2>/dev/null || true
+          { echo "### Targets check, macOS"; echo '```'; cat targets-macos/summary.txt targets-macos/totals.txt; grep "^RESULT" targets-macos/desktop.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: targets-macos
+          path: targets-macos/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Result
+        run: |
+          test -z "${TESTS_FAILED:-}" || { echo "::error::tests failed"; exit 1; }
+          ! grep -q '^FAIL' targets-macos/summary.txt || { echo "::error::a targets case failed"; exit 1; }

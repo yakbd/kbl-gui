@@ -16,6 +16,8 @@ class AppSettings : public QObject
     Q_PROPERTY(bool dark READ dark NOTIFY appearanceChanged)
     Q_PROPERTY(QString cliPath READ cliPath WRITE setCliPath NOTIFY cliPathChanged)
     Q_PROPERTY(QString lastFolder READ lastFolder WRITE setLastFolder NOTIFY lastFolderChanged)
+    // The target the editor validates and builds for (a yakbd -target name).
+    Q_PROPERTY(QString target READ target WRITE setTarget NOTIFY targetChanged)
     Q_PROPERTY(QString platform READ platform CONSTANT)
     Q_PROPERTY(QString style READ style CONSTANT)
     Q_PROPERTY(QString version READ version CONSTANT)
@@ -39,6 +41,8 @@ public:
     void setCliPath(const QString &p);
     QString lastFolder() const { return m_lastFolder; }
     void setLastFolder(const QString &f);
+    QString target() const { return m_target; }
+    void setTarget(const QString &t);
 
     QString platform() const;
     QString style() const;
@@ -58,6 +62,7 @@ signals:
     void appearanceChanged();
     void cliPathChanged();
     void lastFolderChanged();
+    void targetChanged();
 
 private:
     void store();
@@ -65,6 +70,7 @@ private:
     QString m_appearance = QStringLiteral("system");
     QString m_cliPath;
     QString m_lastFolder;
+    QString m_target = QStringLiteral("windows");
     QPalette m_platformPalette;
     bool m_ownPalette = false;
 };

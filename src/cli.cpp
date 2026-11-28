@@ -25,8 +25,10 @@ static QString exeName()
 Cli::Cli(KblDocument *doc, ReportModel *report, AppSettings *settings, QObject *parent)
     : QObject(parent), m_doc(doc), m_report(report), m_settings(settings)
 {
-    if (m_settings)
+    if (m_settings) {
         connect(m_settings, &AppSettings::cliPathChanged, this, &Cli::locate);
+        connect(m_settings, &AppSettings::targetChanged, this, &Cli::targetChanged);
+    }
 }
 
 QString Cli::findProgram(const QString &configured)
@@ -78,6 +80,126 @@ QString Cli::queryVersion(const QString &program, QString *problem)
     return out.mid(6);
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// Targets. The editor knows the names and wording of the targets; which of them this CLI builds, and which commands
+// each has, it asks the CLI by the exit codes of docs/targets.md §1: an unknown target, or a command the target does
+// not have, is a usage error (exit 2), while a known one fails on the missing layout file (exit 1).
+
+namespace {
+struct TargetWords {
+    const char *name;
+    const char *label;
+    const char *filter; // the installer's file type in the Save dialog
+};
+const TargetWords kTargets[] = {
+    {"windows", QT_TRANSLATE_NOOP("Cli", "Windows"), QT_TRANSLATE_NOOP("Cli", "Windows programs")},
+    {"macos", QT_TRANSLATE_NOOP("Cli", "macOS"), QT_TRANSLATE_NOOP("Cli", "Zip archives")},
+    {"xkb", QT_TRANSLATE_NOOP("Cli", "Linux (XKB)"), QT_TRANSLATE_NOOP("Cli", "Archives")},
+};
+} // namespace
+
+QString Cli::targetLabel(const QString &name) const
+{
+    for (const auto &t : kTargets)
+        if (name == QLatin1String(t.name))
+            return QCoreApplication::translate("Cli", t.label);
+    return name;
+}
+
+static int runProbe(const QString &program, const QStringList &args, QString *output = nullptr)
+{
+    QProcess p;
+    p.setProcessChannelMode(QProcess::MergedChannels);
+    p.start(program, args);
+    if (!p.waitForFinished(10000) || p.exitStatus() != QProcess::NormalExit) {
+        p.kill();
+        p.waitForFinished(1000);
+        return -1;
+    }
+    if (output)
+        *output = QString::fromUtf8(p.readAll());
+    return p.exitCode();
+}
+
+void Cli::probeTargets()
+{
+    m_targets.clear();
+    QVariantMap windows{{QStringLiteral("name"), QStringLiteral("windows")},
+                        {QStringLiteral("label"), targetLabel(QStringLiteral("windows"))},
+                        {QStringLiteral("pin"), true},
+                        {QStringLiteral("installer"), true},
+                        {QStringLiteral("installerSuffix"), QStringLiteral(".exe")},
+                        {QStringLiteral("installerFilter"), QCoreApplication::translate("Cli", kTargets[0].filter)}};
+    m_targets << windows;
+    if (!available())
+        return;
+    const QString none = QDir::temp().filePath(QStringLiteral("yakbd-gui-no-such-folder/none.kbl.json"));
+    auto has = [&](const QString &command, const QString &name) {
+        return runProbe(m_program, {command, QStringLiteral("-target"), name, QStringLiteral("-q"), none}) == 1;
+    };
+    // A CLI from before targets (0.1.0-preview.3) has no -target flag: Windows only, as before.
+    if (!has(QStringLiteral("validate"), QStringLiteral("windows")))
+        return;
+    for (const auto &t : kTargets) {
+        const QString name = QLatin1String(t.name);
+        if (name == QLatin1String("windows") || !has(QStringLiteral("validate"), name))
+            continue;
+        QVariantMap info{{QStringLiteral("name"), name}, {QStringLiteral("label"), targetLabel(name)}};
+        info[QStringLiteral("pin")] = has(QStringLiteral("pin"), name);
+        const bool installer = has(QStringLiteral("installer"), name);
+        info[QStringLiteral("installer")] = installer;
+        // The installer's file name suffix, from its -o flag's help ("output file (default <bundleName>.zip)").
+        QString help, suffix;
+        if (installer)
+            runProbe(m_program, {QStringLiteral("installer"), QStringLiteral("-target"), name, QStringLiteral("-h")}, &help);
+        static const QRegularExpression re(QStringLiteral("-o string\\s+[^\\n]*\\(default [^)\\s]*?((?:\\.[A-Za-z0-9]+)+)\\)"));
+        if (const auto m = re.match(help); m.hasMatch())
+            suffix = m.captured(1);
+        info[QStringLiteral("installerSuffix")] = suffix;
+        info[QStringLiteral("installerFilter")] = QCoreApplication::translate("Cli", t.filter);
+        m_targets << info;
+    }
+}
+
+QString Cli::target() const
+{
+    const QString want = m_settings ? m_settings->target() : m_pick;
+    for (const QVariant &t : m_targets)
+        if (t.toMap().value(QStringLiteral("name")).toString() == want)
+            return want;
+    return QStringLiteral("windows");
+}
+
+void Cli::setTarget(const QString &name)
+{
+    if (m_settings) {
+        m_settings->setTarget(name);
+        return;
+    }
+    if (name != m_pick) {
+        m_pick = name;
+        emit targetChanged();
+    }
+}
+
+QVariantMap Cli::targetInfo() const
+{
+    const QString name = target();
+    for (const QVariant &t : m_targets)
+        if (t.toMap().value(QStringLiteral("name")).toString() == name)
+            return t.toMap();
+    return {};
+}
+
+QStringList Cli::targetArgs(const QString &command) const
+{
+    const QString t = target();
+    // Windows keeps the command lines of the CLI before targets (they mean the same, docs/targets.md §1).
+    if (t == QLatin1String("windows"))
+        return command == QLatin1String("validate") ? QStringList{QStringLiteral("-windows")} : QStringList{};
+    return {QStringLiteral("-target"), t};
+}
+
 void Cli::locate()
 {
     m_program = findProgram(m_settings ? m_settings->cliPath() : QString());
@@ -87,7 +209,9 @@ void Cli::locate()
         m_problem = tr("The yakbd command-line tool was not found next to the editor or on the PATH.");
     else
         m_version = queryVersion(m_program, &m_problem);
+    probeTargets();
     emit programChanged();
+    emit targetChanged();
 }
 
 bool Cli::needsImport(const QString &path)
@@ -174,9 +298,10 @@ bool Cli::validate()
     m_tmp = newTemp();
     m_docFile = m_tmp->filePath(m_doc->fileNameForCli());
     m_reportFile = m_tmp->filePath(QStringLiteral("report.json"));
+    m_runTarget = target();
     return start(QStringLiteral("validate"),
-                 {QStringLiteral("validate"), QStringLiteral("-windows"), QStringLiteral("-report"), m_reportFile,
-                  m_docFile},
+                 QStringList{QStringLiteral("validate")} + targetArgs(QStringLiteral("validate"))
+                     + QStringList{QStringLiteral("-report"), m_reportFile, m_docFile},
                  true);
 }
 
@@ -188,6 +313,7 @@ bool Cli::importLayout(const QString &path)
     m_importSource = QFileInfo(path).absoluteFilePath();
     m_docFile = m_tmp->filePath(QFileInfo(path).completeBaseName() + QStringLiteral(".kbl.json"));
     m_reportFile = m_tmp->filePath(QStringLiteral("report.json"));
+    m_runTarget.clear();
     return start(QStringLiteral("import"),
                  {QStringLiteral("convert"), QStringLiteral("-report"), m_reportFile, m_importSource, m_docFile},
                  false);
@@ -201,8 +327,11 @@ bool Cli::pinDefaults()
     m_docFile = m_tmp->filePath(m_doc->fileNameForCli());
     m_pinOut = m_tmp->filePath(QStringLiteral("pinned.kbl.json"));
     m_reportFile = m_tmp->filePath(QStringLiteral("report.json"));
+    m_runTarget = target();
     return start(QStringLiteral("pin"),
-                 {QStringLiteral("pin"), QStringLiteral("-report"), m_reportFile, m_docFile, m_pinOut}, true);
+                 QStringList{QStringLiteral("pin")} + targetArgs(QStringLiteral("pin"))
+                     + QStringList{QStringLiteral("-report"), m_reportFile, m_docFile, m_pinOut},
+                 true);
 }
 
 bool Cli::compile(const QString &outputFolder)
@@ -212,9 +341,11 @@ bool Cli::compile(const QString &outputFolder)
     m_tmp = newTemp();
     m_docFile = m_tmp->filePath(m_doc->fileNameForCli());
     m_reportFile = m_tmp->filePath(QStringLiteral("report.json"));
+    m_runTarget = target();
+    m_outPath = outputFolder;
     return start(QStringLiteral("compile"),
-                 {QStringLiteral("compile"), QStringLiteral("-o"), outputFolder, QStringLiteral("-report"),
-                  m_reportFile, m_docFile},
+                 QStringList{QStringLiteral("compile")} + targetArgs(QStringLiteral("compile"))
+                     + QStringList{QStringLiteral("-o"), outputFolder, QStringLiteral("-report"), m_reportFile, m_docFile},
                  true);
 }
 
@@ -225,9 +356,11 @@ bool Cli::buildInstaller(const QString &outputFile)
     m_tmp = newTemp();
     m_docFile = m_tmp->filePath(m_doc->fileNameForCli());
     m_reportFile = m_tmp->filePath(QStringLiteral("report.json"));
+    m_runTarget = target();
+    m_outPath = outputFile;
     return start(QStringLiteral("installer"),
-                 {QStringLiteral("installer"), QStringLiteral("-o"), outputFile, QStringLiteral("-report"),
-                  m_reportFile, m_docFile},
+                 QStringList{QStringLiteral("installer")} + targetArgs(QStringLiteral("installer"))
+                     + QStringList{QStringLiteral("-o"), outputFile, QStringLiteral("-report"), m_reportFile, m_docFile},
                  true);
 }
 
@@ -271,11 +404,15 @@ void Cli::onFinished(int exitCode, QProcess::ExitStatus status)
         const bool inDoc = op != QLatin1String("import");
         m_report->load(rf.readAll(), op, inDoc, QFileInfo(m_docFile).fileName());
     }
+    m_reportTarget = m_runTarget;
+    emit reportTargetChanged();
+    const bool windows = m_runTarget.isEmpty() || m_runTarget == QLatin1String("windows");
+    const QString label = targetLabel(m_runTarget);
     if (op == QLatin1String("pin") && ok) {
         QFile f(m_pinOut);
         ParseError e;
         JPtr pinned = f.open(QIODevice::ReadOnly) ? parseValue(f.readAll(), &e) : JPtr();
-        const int n = pinned ? m_doc->mergeMissing(pinned, tr("Pin defaults")) : 0;
+        const int n = pinned ? m_doc->mergeMissing(pinned, windows ? tr("Pin defaults") : tr("Pin %1 defaults").arg(label)) : 0;
         message = n ? tr("Pinned %n default choice(s) into the file", nullptr, n) : tr("Nothing to pin: every choice is in the file");
     }
     if (message.isEmpty()) {
@@ -285,9 +422,13 @@ void Cli::onFinished(int exitCode, QProcess::ExitStatus status)
                       : ok              ? tr("Valid, with %n warning(s)", nullptr, warnings)
                                         : tr("%n error(s), %1 warning(s)", nullptr, errors).arg(warnings);
         else if (op == QLatin1String("compile"))
-            message = ok ? tr("Built the layout DLLs") : tr("The build failed: %n error(s)", nullptr, errors);
+            message = !ok      ? tr("The build failed: %n error(s)", nullptr, errors)
+                      : windows ? tr("Built the layout DLLs")
+                                : tr("Built the %1 layout in %2").arg(label, QDir::toNativeSeparators(m_outPath));
         else if (op == QLatin1String("installer"))
-            message = ok ? tr("Built the installer") : tr("The installer was not built: %n error(s)", nullptr, errors);
+            message = !ok      ? tr("The installer was not built: %n error(s)", nullptr, errors)
+                      : windows ? tr("Built the installer")
+                                : tr("Built %1").arg(QDir::toNativeSeparators(m_outPath));
         else
             message = ok ? tr("Done") : tr("Failed: %n error(s)", nullptr, errors);
     }
