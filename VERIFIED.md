@@ -52,6 +52,20 @@ uninstall, with `yakbd-cli-setup.exe`) is checked before the release is publishe
 | Wayland: weston (headless) and KWin (`--virtual`), `QT_QPA_PLATFORM=wayland`: the editor's window renders; on KWin it follows Breeze Light/Dark | same | pass |
 | the AppImage on Ubuntu 22.04, 24.04, 26.04, Debian 12 and Fedora 43: self-test, offscreen window, X11 + GTK light and dark | `tools/distro-check.sh` | pass |
 
+## Targets: macOS and Linux (XKB), format version 0.2 (development builds, 2026-11-28)
+
+The target picker (docs/targets.md) with a yakbd built from yakbd-cli `main` (it has the macos and xkb targets; no
+release has them yet). `tools/targets-check.sh` opens the two 0.2 examples and `minimal-qwerty` (0.1), picks each
+target, validates, builds, builds the installer or archive and saves unchanged, and compares each step with yakbd's
+own verdict (a layout that does not build for a target passes when the editor refuses it too).
+
+| check | where | result |
+|---|---|---|
+| all tests (also: pin macOS and XKB defaults into a 0.1 file makes it 0.2 in one undo step; the picker and Validate fit at 760 px; the first macOS value typed into a 0.1 file keeps the field's focus) and the targets check, Linux under Xvfb | Targets check run [46115161464](https://github.com/yakbd/yakbd-gui/actions/runs/46115161464), Ubuntu 22.04 container | pass, 45 of 45 cases |
+| the same on macOS (native style, cocoa), plus the desktop checks: Layout › Target lists Windows, macOS, Linux (XKB) and ticks macOS when chosen (System Events) | same run, `macos-15` | pass, 51 of 51 |
+| the AppImage on KDE Plasma (X11) with `TARGETS_CLI`: the targets check, and the other desktop checks unchanged | `tools/desktop-check.sh`, rootless Docker | pass, 45 of 45 |
+| the tests with the pinned yakbd 0.1.0-preview.3 (no targets: Windows only, the old command lines; the target tests skip) | Linux run [46115161626](https://github.com/yakbd/yakbd-gui/actions/runs/46115161626) | pass |
+
 ## Linux
 
 | check | where | result |
