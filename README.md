@@ -1,151 +1,36 @@
 # YAKBD Editor
 
-A desktop editor for keyboard layouts in [`.kbl.json`](https://github.com/yakbd/kbl-spec), the one open format of
-[YAKBD](https://github.com/yakbd). YAKBD is an open-source keyboard layout designer: people design a layout once,
-and YAKBD turns it into native, installable layouts for each operating system and keyboard tool. The editor shows
-the layout as a keyboard, layer by layer, and lets you change what each key types, edit dead keys, metadata and the
-build choices of each target. Checking, converting and building are done by the [`yakbd` command-line
-tool](https://github.com/yakbd/yakbd-cli), which ships with the editor: the editor never makes a platform decision
-itself.
+A desktop editor for keyboard layouts in [YAKBD](https://yakbd.github.io/)'s open `.kbl.json` format: see the layout
+as a keyboard, layer by layer, change what each key types, edit dead keys and build choices, and build installable
+layouts with the bundled [`yakbd`](https://github.com/yakbd/yakbd-cli) tool.
 
-The build targets are Windows (layout DLLs and installers), macOS (layout bundles) and Linux (XKB files for Wayland
-and X11), picked in the editor ([docs/targets.md](docs/targets.md)); macOS and Linux need a `yakbd` that has those
-targets, and format version 0.2 (a draft). The editor opens `.klc` files, CLDR keyboard XML and Windows layout
-DLLs. Third-party formats such as Keyman come later; the editor gets each one through the `yakbd` tool.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/editor-dark.png">
+  <img alt="The editor showing a layout's AltGr layer as a keyboard, with the key panel and the problems panel" src="docs/images/editor-light.png">
+</picture>
 
-**Status: preview** (see the [latest release](https://github.com/yakbd/yakbd-gui/releases/latest)). Built and tested on
-Linux, Windows and macOS (CI), and in a Windows 11 guest; what is still open is in [VERIFIED.md](VERIFIED.md).
+**Runs on** Windows (x64, ARM64), macOS (Apple silicon and Intel) and Linux (x86-64).
+**Builds layouts for** Windows today; macOS and Linux (XKB, Wayland and X11) in the next release; Android, iOS,
+ChromeOS and Keyman planned. Status: preview.
 
-## What it does
+## Download
 
-- **Open** `.kbl.json` files; MSKLC `.klc` files, CLDR keyboard XML and Windows layout DLLs are converted by
-  `yakbd convert` and open as a new, unsaved layout with the conversion report.
-- **Save** writes your edits and nothing else: an untouched file saves byte for byte, and an edit changes only the
-  lines of the edited value, in the file's own formatting.
-- **Keyboard**: the file's positions on a keyboard picture, one layer at a time; dead keys, keys that fall back to
-  the layer without Caps Lock, and explicit "nothing" are marked. Arrow keys move between keys, Enter edits.
-- **Key panel**: what the key does in the current layer (text, code points, dead key, key reference, nothing, no
-  binding), its scan code and name, and every layer at a glance.
-- **Dead keys**: the composition tables, the character each dead key stands for and what happens without a match.
-- **Metadata, Behaviour, Windows Target, macOS Target, Linux Target, Other Targets**: forms generated from the
-  format's JSON Schema (of the file's format version, 0.1 or 0.2); an empty field leaves the choice to the format's
-  default or the tool's default rule.
-- **JSON**: any part of the file as JSON, for what the forms do not cover.
-- **Target** (Layout › Target, or the list beside Validate): Windows, macOS or Linux (XKB); what Validate checks and
-  the Build commands build ([docs/targets.md](docs/targets.md)).
-- **Problems panel**: `yakbd validate` for the target runs shortly after every change; problems, losses and the
-  choices taken from default rules link to the field they concern. **Pin Defaults** writes those choices into the
-  file (one undo step). **Build** (Layout DLLs, the macOS bundle, the XKB files) and **Build Installer/Archive**
-  (the Windows installer, the macOS zip, the Linux archive) run `yakbd compile` and `yakbd installer`.
-- Undo/redo for every edit, recent files, unsaved-changes prompts, light and dark appearance (follows the system,
-  or View › Appearance).
+From the [latest release](https://github.com/yakbd/yakbd-gui/releases/latest):
+[`yakbd-gui-setup.exe`](https://github.com/yakbd/yakbd-gui/releases/latest/download/yakbd-gui-setup.exe) for Windows,
+the `.dmg` for macOS, the `.AppImage` for Linux. Each one carries the `yakbd` tool.
 
-The editor looks for `yakbd` next to its own executable, then on the PATH; Preferences can name another copy. It
-needs yakbd 0.1 or a later 0.x release.
+## Documentation
 
-## Install
-
-Download from the [latest release](https://github.com/yakbd/yakbd-gui/releases/latest) of this repository (made by the `Packages`
-workflow; each file has a `SHA256SUMS` line and a build provenance attestation: `gh attestation verify <file> -R
-yakbd/yakbd-gui`).
-
-- **Windows**: [`yakbd-gui-setup.exe`](https://github.com/yakbd/yakbd-gui/releases/latest/download/yakbd-gui-setup.exe), one installer for every Windows PC, with the components **YAKBD Editor** (x64
-  and ARM64) and **YAKBD CLI** (x86, x64, ARM64; the editor needs it). It installs into `C:\Program Files\YAKBD\`
-  (`Editor\` and `CLI\`), adds the Start-menu shortcut **YAKBD Editor**, and offers to put the CLI on the PATH
-  (off by default; the CLI's own `yakbd-cli-setup.exe` turns it on). On 32-bit Windows the editor is greyed out
-  (Qt 6 has no 32-bit Windows build) and the CLI alone can be installed. Both installers are one product, "YAKBD"
-  in Installed apps: each one sees, upgrades or keeps what the other installed. Uninstalling removes both; the
-  editor can also be removed alone, optionally with your settings. It takes `msiexec`-style switches
-  (`/quiet /norestart`, `ADDLOCAL`, `REMOVE`, `ADDTOPATH`, `REMOVEUSERDATA`: yakbd-cli's
-  [docs/installer-cli.md](https://github.com/yakbd/yakbd-cli/blob/main/docs/installer-cli.md) §12).
-- **macOS** (Apple silicon and Intel, macOS 14.4 or later): `YAKBD-Editor-<version>.dmg` with `YAKBD Editor.app`, and `yakbd` inside the app.
-  The app is **not signed or notarized**, so macOS blocks it the first time: open it once, then go to
-  **System Settings › Privacy & Security**, find the message about YAKBD and click **Open Anyway** (within about an
-  hour), and confirm. The command-line tool is at `YAKBD Editor.app/Contents/MacOS/yakbd`.
-- **Linux** (x86-64, glibc 2.35 or later: Ubuntu 22.04+, Debian 12+, Fedora): `YAKBD-Editor-<version>-x86_64.AppImage`;
-  make it executable and run it (the CLI is inside: `--appimage-extract` shows `usr/bin/yakbd`). It needs the libraries
-  every desktop has: OpenGL/EGL, libxkbcommon, fontconfig, D-Bus, GLib and GSSAPI (Kerberos); on a minimal system
-  `apt install libgl1 libegl1 libxkbcommon0 libfontconfig1 libdbus-1-3 libglib2.0-0 libgssapi-krb5-2`. On X11 Qt
-  also needs the xcb utility libraries, which desktops do not all install (`libxcb-cursor0` is the one most often
-  missing): `apt install libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0
-  libxcb-shape0 libxcb-xkb1 libxkbcommon-x11-0`, or on Fedora `dnf install xcb-util-cursor xcb-util-wm
-  xcb-util-image xcb-util-keysyms xcb-util-renderutil libxkbcommon-x11`. GTK 3 gives native file dialogs and the
-  desktop's light/dark setting on GNOME. The AppImage needs FUSE 2, or run it with `--appimage-extract-and-run`.
-
-## Build
-
-Qt 6.12.1 is pinned: `tools/getqt.cmake` downloads Qt's official open-source archives (LGPL) from download.qt.io
-and checks each against the SHA-1 committed in `tools/qt-pins.cmake` (no Qt account, no installer, no Python).
-`tools/update-qt-pins.cmake` regenerates the pins for a Qt update. CMake 3.25 or later and a C++17 compiler are
-needed.
-
-**Linux** (the release build host is Ubuntu 22.04; `tools/docker/build.Dockerfile` is that environment, the same
-as CI):
-`tools/linux-build-deps.sh` lists the packages (a C++ compiler, Ninja, OpenGL/EGL and xkbcommon headers, the X11
-and GTK runtime libraries, Xvfb for the screenshot test) and installs a pinned CMake.
-
-    cmake -DPLATFORM=linux_gcc_64 -DDEST=$HOME/qt-6.12.1 -P tools/getqt.cmake
-    cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=$HOME/qt-6.12.1
-    cmake --build build
-    ctest --test-dir build --output-on-failure
-    ./build/yakbd-gui
-    sh packaging/linux/package.sh build build/cli/yakbd dist     # AppImage + runtime sources
-
-**Windows** (x64 or ARM64, natively; Visual Studio 2022 or later with the C++ tools of that architecture):
-
-    cmake -DPLATFORM=win64_msvc2022_64 -DDEST=C:/qt -P tools/getqt.cmake      # ARM64: win64_msvc2022_arm64
-    # in a "Developer PowerShell for VS" of the same architecture:
-    cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=C:/qt -DYAKBD_CLI=C:/path/to/yakbd.exe -DYAKBD_QT_SUBFOLDER=ON
-    cmake --build build
-    pwsh packaging/windows/package.ps1 -Build build -Arch x64 -Out dist
-
-That gives `dist\payload-x64\`, the installed `YAKBD\Editor\` folder: `yakbd-gui.exe`, `qt.conf` and the licence
-texts, with Qt and the Visual C++ runtime in `qt\`, a private side-by-side assembly the exe's manifest names (so
-Windows finds it without PATH; `YAKBD_QT_SUBFOLDER=ON` adds that manifest, and such an exe starts only with `qt\`
-beside it). The editor finds the CLI at `..\CLI\yakbd.exe`, beside itself, or on PATH.
-`packaging/cli-release.sh <tag> cli` (Linux or macOS, with gh and Go) fetches and checks a yakbd-cli release and
-rebuilds its Windows `yakbd.exe` from the tag; `packaging/windows/make-setup.sh` then turns the x64 and ARM64
-payloads into `yakbd-gui-setup.exe` with the tag's own `tools/toolsetup` (`-editor`, `-editor-json`). Use the Go
-version named in the tag's `installer/stub-386.version`: only then is every `yakbd.exe` byte-identical to the one
-the release's `yakbd-cli-setup.exe` carries, which both scripts check.
-
-**macOS** (Xcode command-line tools):
-
-    cmake -DPLATFORM=clang_64 -DDEST=$HOME/qt-6.12.1 -P tools/getqt.cmake
-    cmake -S . -B build -DCMAKE_PREFIX_PATH=$HOME/qt-6.12.1 -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DYAKBD_CLI=/path/to/yakbd
-    cmake --build build --parallel
-    sh packaging/macos/package.sh build cli/macos/yakbd dist cli     # the release's universal yakbd (cli-release.sh)
-
-Run `open "build/YAKBD Editor.app"`; the packaged app holds the CLI next to the editor's executable.
-The tests run the released CLI: on Linux x86-64 the configure step fetches the release pinned in
-`tools/cli-pins.cmake` (checked against its `SHA256SUMS`); elsewhere pass `-DYAKBD_CLI`.
-
-## Look and feel per platform
-
-| | Windows | macOS | Linux |
-|---|---|---|---|
-| style | FluentWinUI3 | macOS (native controls) | Fusion, with the desktop's platform theme where it has one (GTK, portal) |
-| menu bar | in the window | the system menu bar; About, Settings and Quit move to the app menu | in the window |
-| file dialogs | native | native | GTK or portal dialogs where available, otherwise Qt's |
-| light/dark | follows Windows | follows macOS | follows the platform theme; View › Appearance forces light or dark |
-
-`QT_QUICK_CONTROLS_STYLE` overrides the style. Options for testing: `--self-test FILE` (open, edit, save, reopen
-and validate without a window), `--grab out.png` (screenshot and quit), `--appearance light|dark`, `--page`,
-`--select POINTER`, `--validate`, `--target NAME`, `--build DIR` (docs/targets.md).
-
-## What is verified
-
-[`VERIFIED.md`](VERIFIED.md) records what was checked where (Linux distributions, a Windows 11 guest without GPU,
-the macOS runner), with the run ids, and what still needs a person or a platform that has not run yet.
-
-## Code signing policy
-
-The Windows installer is to be signed through SignPath Foundation (planned; the application is made): free code
-signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
-What is signed, how and by whom: [`docs/code-signing-policy.md`](docs/code-signing-policy.md).
+- [Installing the editor](https://yakbd.github.io/guide/#the-editor)
+- [What the editor does](https://yakbd.github.io/editor/)
+- [Building for Windows, macOS and Linux](https://yakbd.github.io/editor/targets)
+- [Building the editor from source](https://yakbd.github.io/editor/building)
+- [What is verified](https://yakbd.github.io/editor/verified)
+- [What's new](https://yakbd.github.io/releases)
 
 ## Licence
 
-MIT-0 (MIT No Attribution), see [`LICENSE`](LICENSE). The editor uses Qt under the LGPL v3 (dynamically linked);
-third-party material and its licences are listed in [`NOTICE`](NOTICE). Where the content came from:
-[`CLEAN-ROOM.md`](CLEAN-ROOM.md).
+MIT-0, see [LICENSE](LICENSE). Qt is used under the LGPL v3; third-party material is listed in [NOTICE](NOTICE).
+[Contributing](https://yakbd.github.io/contributing) ·
+[Code signing policy](https://yakbd.github.io/editor/code-signing-policy) (planned: free code signing provided by
+[SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org)).

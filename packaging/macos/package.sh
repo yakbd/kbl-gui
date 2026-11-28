@@ -1,6 +1,6 @@
 #!/bin/sh
 # macOS package: YAKBD Editor.app (universal: Qt's clang_64 build is x86_64 + arm64) with the release's universal yakbd
-# CLI inside, in a .dmg. Unsigned (ad-hoc signature only): see README, "Open Anyway".
+# CLI inside, in a .dmg. Unsigned (ad-hoc signature only): the install guide on the site explains "Open Anyway".
 #   packaging/macos/package.sh <build dir> <yakbd (universal)> <output dir> [<CLI docs folder>]
 # The CLI docs folder holds yakbd-cli-LICENSE and yakbd-cli-NOTICE (default: the folder of the binary).
 set -eu
