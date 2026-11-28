@@ -83,7 +83,7 @@ the output of `yakbd pin` (0.1.0-preview.2) on minimal-qwerty.kbl.json. qml/temp
 minimal-qwerty.kbl.json with its metadata replaced.
 qml/schema/0.2/kbl.schema.json, tests/data/macos-option-deadkeys.kbl.json and tests/data/xkb-caps-deadkeys.kbl.json
 are unchanged copies from the spec-0.2 branch of https://github.com/yakbd/kbl-spec at commit
-36aaa7b120a323c913953ef1d88b64d236915e7f (MIT-0; format version 0.2 is a draft).
+886856bc1c2cbf2c9dcc5796a1b2aaa6bf42516d (MIT-0; format version 0.2 is a draft).
 
 Icon
 ----
